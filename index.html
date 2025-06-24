@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Lane Group Excel Generator</title>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    .group-container { margin-top: 1rem; margin-bottom: 2rem; }
+    .lane-entry { margin-bottom: 0.5rem; }
+    .lane-entry input[type="text"] { width: 150px; margin-left: 0.5rem; }
+    .lane-entry button { margin-left: 0.5rem; }
+    .preview { font-size: 0.9em; color: #555; }
+    .lane-numbers { margin-top: 0.5rem; margin-left: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Lane Group Excel Generator</h1>
+
+  <label>Starting IP Address: <input id="start-ip" type="text" value="192.168.0.10" oninput="updatePreview()"></label><br>
+  <label>Subnet Mask: <input id="subnet-mask" type="text" value="255.255.255.0"></label><br><br>
+
+  <select id="lane-type" onchange="updateLaneInputs()">
+    <option value="" disabled selected>Select configuration</option>
+    <option value="3P/2L">3P/2L</option>
+    <option value="6P/4L">6P/4L</option>
+    <option value="4P/2L">4P/2L</option>
+    <option value="4P/4L">4P/4L</option>
+    <option value="3P/2L-EU">3P/2L-EU</option>
+    <option value="6P/4L-EU">6P/4L-EU</option>
+    <option value="4P/2L-EU">4P/2L-EU</option>
+    <option value="4P/4L-EU">4P/4L-EU</option>
+  </select>
+  <label>Lane Group ID: <input id="lane-name" type="text" placeholder="Optional"></label>
+  <div id="lane-numbers" class="lane-numbers"></div>
+  <label><input type="checkbox" id="support-option"> Support Option</label>
+  <button onclick="addLaneGroup()">Add Lane Group</button>
+
+  <button onclick="saveTemplate()">Save Template</button>
+  <input type="file" id="load-template" onchange="loadTemplate(event)">
+
+  <div id="lane-list" class="group-container"></div>
+
+  <div class="preview" id="ip-preview"></div>
+
+  <button onclick="generateExcel()">Generate IP Sheet</button>
+  <button onclick="generateCSV()">Generate Server Config File</button>
+
+  <script>
+    let laneGroups = [];
+    let licenseKey = "LICENSEKEY";
+
+    const configs = {
+      "3P/2L": { pc: 1, proj: 3, lidar: 1, camera: 1, pduType: 'Wattbox', lanes: 2 },
+      "6P/4L": { pc: 2, proj: 6, lidar: 1, camera: 1, pduType: 'Wattbox', lanes: 4 },
+      "4P/2L": { pc: 1, proj: 4, lidar: 1, camera: 1, pduType: 'Wattbox', lanes: 2 },
+      "4P/4L": { pc: 1, proj: 4, lidar: 1, camera: 1, pduType: 'Wattbox', lanes: 4 },
+      "3P/2L-EU": { pc: 1, proj: 3, lidar: 1, camera: 1, pduType: 'Aviosys', lanes: 2 },
+      "6P/4L-EU": { pc: 2, proj: 6, lidar: 1, camera: 1, pduType: 'Aviosys', lanes: 4 },
+      "4P/2L-EU": { pc: 1, proj: 4, lidar: 1, camera: 1, pduType: 'Aviosys', lanes: 2 },
+      "4P/4L-EU": { pc: 1, proj: 4, lidar: 1, camera: 1, pduType: 'Aviosys', lanes: 4 }
+    };
+
+    const supportPDUs = {
+      "3P/2L": 4,
+      "6P/4L": 6,
+      "4P/2L": 5,
+      "4P/4L": 5,
+      "3P/2L-EU": 4,
+      "6P/4L-EU": 6,
+      "4P/2L-EU": 4,
+      "4P/4L-EU": 4
+    };
+
+    function updateLaneInputs() {
+      const container = document.getElementById('lane-numbers');
+      container.innerHTML = '';
+      const type = document.getElementById('lane-type').value;
+      const lanes = configs[type].lanes;
+      for (let i = 0; i < lanes; i++) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = `Lane ${i + 1} Number`;
+        input.className = 'lane-input';
+        container.appendChild(input);
+      }
+    }
+
+    function addLaneGroup() {
+      const type = document.getElementById('lane-type').value;
+      const customName = document.getElementById('lane-name').value.trim();
+      const laneInputs = document.querySelectorAll('.lane-input');
+      const laneNumbers = Array.from(laneInputs).map(input => input.value.trim()).filter(n => n);
+      const support = document.getElementById('support-option').checked;
+
+      const pdu = support ? supportPDUs[type] || 0 : 0;
+
+      laneGroups.push({ type, name: customName || `${type}-${laneGroups.length + 1}`, laneNumbers, support, pdu });
+      renderLaneGroups();
+      updatePreview();
+    }
+
+    function removeLaneGroup(index) {
+      laneGroups.splice(index, 1);
+      renderLaneGroups();
+      updatePreview();
+    }
+
+    function renderLaneGroups() {
+      const laneList = document.getElementById('lane-list');
+      laneList.innerHTML = '';
+      laneGroups.forEach((group, index) => {
+        const lanes = group.laneNumbers.join(', ');
+        const supportText = group.support ? "with Support" : "no Support";
+        const div = document.createElement('div');
+        div.className = 'lane-entry';
+        div.innerHTML = `Lane Group ${index + 1}: <strong>${group.name}</strong> (${group.type}) | Lanes: ${lanes} | ${supportText} <button onclick="removeLaneGroup(${index})">Remove</button>`;
+        laneList.appendChild(div);
+      });
+    }
+
+    function ipIncrement(ip, inc) {
+      const parts = ip.split('.').map(Number);
+      let i = parts[3] + inc;
+      parts[3] = i % 256;
+      parts[2] += Math.floor(i / 256);
+      return parts.join('.');
+    }
+
+    function updatePreview() {
+      let ip = document.getElementById('start-ip').value;
+      let count = 1;
+      laneGroups.forEach(g => {
+        const cfg = configs[g.type];
+        count += cfg.pc + cfg.proj + cfg.lidar + cfg.camera + g.pdu;
+      });
+      let lastIP = ip;
+      for (let i = 1; i < count; i++) lastIP = ipIncrement(lastIP, 1);
+      document.getElementById('ip-preview').textContent = `Preview IP Range: ${ip} - ${lastIP}`;
+    }
+
+    function generateCSV() {
+      let ip = document.getElementById('start-ip').value;
+      const rows = [];
+      rows.push(["CONFIG VERSION", "3"]);
+      rows.push(["UNREAL LICENSE", "replace-me-with-the-license"]);
+
+      laneGroups.forEach((group) => {
+        const cfg = configs[group.type];
+
+        for (let i = 0; i < cfg.pc; i++) {
+          rows.push(["COMPUTER IP", ip]);
+          ip = ipIncrement(ip, 1);
+        }
+
+        group.laneNumbers.forEach(lane => {
+          rows.push(["LANE NUMBER", lane]);
+        });
+
+        const firstLane = group.laneNumbers[0];
+        const lastLane = group.laneNumbers[group.laneNumbers.length - 1];
+
+        for (let i = 0; i < cfg.proj; i++) {
+          const label = `Lane ${firstLane}-${lastLane} ${String.fromCharCode(65 + i)}`;
+          rows.push(["PROJECTOR IP", ip]);
+          ip = ipIncrement(ip, 1);
+          rows.push(["PROJECTOR LABEL", label]);
+          rows.push(["PROJECTOR MODEL", "OPTOMA"]);
+        }
+
+        ip = ipIncrement(ip, cfg.lidar + cfg.camera + group.pdu);
+      });
+
+
+      const csvContent = rows.map(row => row.join(",")).join("\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      saveAs(blob, 'LaneGroups-Config.csv');
+    }
+
+    function generateExcel() {
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet("IP Sheet");
+
+      sheet.columns = [
+        { header: "Device", key: "device", width: 20 },
+        { header: "IP Address", key: "ip", width: 20 },
+        { header: "MAC Address", key: "mac", width: 20 },
+        { header: "Serial Number", key: "serial", width: 20 },
+        { header: "Credentials", key: "userpw", width: 20 }
+      ];
+
+      let ip = document.getElementById('start-ip').value;
+
+      laneGroups.forEach((group, index) => {
+        const cfg = configs[group.type];
+
+        sheet.addRow([]);
+        sheet.addRow([`Lane Group ${index + 1}: ${group.name} (${group.type})`]);
+
+        for (let i = 0; i < cfg.pc; i++) {
+          const label = cfg.pc > 1 ? `Render PC-${String.fromCharCode(65 + i)}` : "Render PC";
+          sheet.addRow({ device: label, ip });
+          ip = ipIncrement(ip, 1);
+        }
+
+        for (let i = 0; i < cfg.proj; i++) {
+          const label = `Projector-${String.fromCharCode(65 + i)}`;
+          sheet.addRow({ device: label, ip });
+          ip = ipIncrement(ip, 1);
+        }
+
+        sheet.addRow({ device: "LiDAR", ip });
+        ip = ipIncrement(ip, 1);
+
+        sheet.addRow({ device: "Camera", ip });
+        ip = ipIncrement(ip, 1);
+
+        for (let i = 0; i < group.pdu; i++) {
+          const label = group.pdu > 1 ? `${cfg.pduType}-${String.fromCharCode(65 + i)}` : cfg.pduType;
+          sheet.addRow({ device: label, ip });
+          ip = ipIncrement(ip, 1);
+        }
+      });
+
+      sheet.addRow([]);
+      sheet.addRow(["Server", ip]);
+
+      workbook.xlsx.writeBuffer().then(buffer => {
+        saveAs(new Blob([buffer]), 'LaneGroups-IPSheet.xlsx');
+      });
+    }
+
+    function saveTemplate() {
+      const blob = new Blob([JSON.stringify(laneGroups, null, 2)], { type: 'application/json' });
+      saveAs(blob, 'lane-template.json');
+    }
+
+    function loadTemplate(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          laneGroups = JSON.parse(e.target.result);
+          renderLaneGroups();
+          updatePreview();
+        } catch (err) {
+          alert('Failed to load template: Invalid format');
+        }
+      };
+      reader.readAsText(file);
+    }
+  </script>
+</body>
+</html>
