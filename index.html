@@ -17,7 +17,9 @@
 </head>
 <body>
   <h1>Lane Group Excel Generator</h1>
-
+<label>Project Code: <input id="project-code" placeholder="Enter project code"></label><br>
+<label>Gateway IP: <input id="gateway-ip" placeholder="Enter gateway IP"></label><br>
+<label>DNS (optional): </label><input id="dns-ip" placeholder="Enter DNS (optional)"></label><br>
   <label>Starting IP Address: <input id="start-ip" type="text" value="192.168.0.10" oninput="updatePreview()"></label><br>
   <label>Subnet Mask: <input id="subnet-mask" type="text" value="255.255.255.0"></label><br><br>
 
@@ -179,18 +181,36 @@
     }
 
         function generateExcel() {
-      const workbook = new ExcelJS.Workbook();
+            const workbook = new ExcelJS.Workbook();
       const sheet = workbook.addWorksheet("IP Sheet");
+
+      const projectCode = document.getElementById('project-code').value;
+      const gateway = document.getElementById('gateway-ip').value;
+      const dns = document.getElementById('dns-ip').value;
+
+      // sheet.addRow(["Project Code:", projectCode]);
+      // sheet.addRow(["Gateway IP:", gateway]);
+      // if (dns) sheet.addRow(["DNS:", dns]);
+      sheet.addRow([]);
 
       sheet.columns = [
         { header: "Device", key: "device", width: 20 },
         { header: "IP Address", key: "ip", width: 20 },
         { header: "MAC Address", key: "mac", width: 20 },
         { header: "Serial Number", key: "serial", width: 20 },
-        { header: "Credentials", key: "userpw", width: 20 }
+        { header: "Credentials", key: "userpw", width: 20 },
+        { header: "Project Code", key: "projcode", width: 20 },
+        { header: "Gateway IP", key: "gtwip", width: 20 },
+        { header: "DNS", key: "dnsip", width: 20 }
       ];
 
-            let ip = document.getElementById('start-ip').value;
+      sheet.addRow(
+        dns
+          ? { projcode: projectCode, gtwip: gateway, dnsip: dns }
+          : { projcode: projectCode, gtwip: gateway }
+      );
+
+      let ip = document.getElementById('start-ip').value;
       const altFill = {
         type: 'pattern',
         pattern: 'solid',
