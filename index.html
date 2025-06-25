@@ -178,7 +178,7 @@
       saveAs(blob, 'LaneGroups-Config.csv');
     }
 
-    function generateExcel() {
+        function generateExcel() {
       const workbook = new ExcelJS.Workbook();
       const sheet = workbook.addWorksheet("IP Sheet");
 
@@ -190,41 +190,56 @@
         { header: "Credentials", key: "userpw", width: 20 }
       ];
 
-      let ip = document.getElementById('start-ip').value;
+            let ip = document.getElementById('start-ip').value;
+      const altFill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFEFEFEF' }
+      };
 
       laneGroups.forEach((group, index) => {
         const cfg = configs[group.type];
-
         sheet.addRow([]);
-        sheet.addRow([`Lane Group ${index + 1}: ${group.name} (${group.type})`]);
+        const headerRow = sheet.addRow([`Lane Group ${index + 1}: ${group.name} (${group.type})`]);
+        headerRow.eachCell(cell => {
+          cell.font = { bold: true };
+        });
+
+        let rowCount = 0;
 
         for (let i = 0; i < cfg.pc; i++) {
           const label = cfg.pc > 1 ? `Render PC-${String.fromCharCode(65 + i)}` : "Render PC";
-          sheet.addRow({ device: label, ip });
+          const row = sheet.addRow({ device: label, ip });
+          if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
           ip = ipIncrement(ip, 1);
         }
 
         for (let i = 0; i < cfg.proj; i++) {
-          const label = `Projector-${String.fromCharCode(65 + i)}`;
-          sheet.addRow({ device: label, ip });
+          const label = `Projector${group.name}-${i + 1}`;
+          const row = sheet.addRow({ device: label, ip });
+          if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
           ip = ipIncrement(ip, 1);
         }
 
-        sheet.addRow({ device: "LiDAR", ip });
+        const lidarRow = sheet.addRow({ device: "LiDAR", ip });
+        if (rowCount++ % 2 === 0) lidarRow.eachCell(cell => cell.fill = altFill);
         ip = ipIncrement(ip, 1);
 
-        sheet.addRow({ device: "Camera", ip });
+        const camRow = sheet.addRow({ device: "Camera", ip });
+        if (rowCount++ % 2 === 0) camRow.eachCell(cell => cell.fill = altFill);
         ip = ipIncrement(ip, 1);
 
         for (let i = 0; i < group.pdu; i++) {
           const label = group.pdu > 1 ? `${cfg.pduType}-${String.fromCharCode(65 + i)}` : cfg.pduType;
-          sheet.addRow({ device: label, ip });
+          const row = sheet.addRow({ device: label, ip });
+          if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
           ip = ipIncrement(ip, 1);
         }
       });
 
       sheet.addRow([]);
-      sheet.addRow(["Server", ip]);
+      const serverRow = sheet.addRow(["Server", ip]);
+      serverRow.eachCell(cell => cell.font = { bold: true });
 
       workbook.xlsx.writeBuffer().then(buffer => {
         saveAs(new Blob([buffer]), 'LaneGroups-IPSheet.xlsx');
