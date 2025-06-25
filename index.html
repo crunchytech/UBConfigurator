@@ -187,7 +187,7 @@
       const projectCode = document.getElementById('project-code').value;
       const gateway = document.getElementById('gateway-ip').value;
       const dns = document.getElementById('dns-ip').value;
-
+      const subnetmask = document.getElementById('subnet-mask').value;
       // sheet.addRow(["Project Code:", projectCode]);
       // sheet.addRow(["Gateway IP:", gateway]);
       // if (dns) sheet.addRow(["DNS:", dns]);
@@ -201,13 +201,14 @@
         { header: "Credentials", key: "userpw", width: 20 },
         { header: "Project Code", key: "projcode", width: 20 },
         { header: "Gateway IP", key: "gtwip", width: 20 },
-        { header: "DNS", key: "dnsip", width: 20 }
+        { header: "DNS", key: "dnsip", width: 20 },
+        { header: "Subnet Mask", key: "subnet", width: 20 }
       ];
 
       sheet.addRow(
         dns
-          ? { projcode: projectCode, gtwip: gateway, dnsip: dns }
-          : { projcode: projectCode, gtwip: gateway }
+          ? { projcode: projectCode, gtwip: gateway, dnsip: dns , subnet: subnetmask }
+          : { projcode: projectCode, gtwip: gateway , subnet: subnetmask}
       );
 
       let ip = document.getElementById('start-ip').value;
