@@ -208,7 +208,7 @@
         let rowCount = 0;
 
         for (let i = 0; i < cfg.pc; i++) {
-          const label = cfg.pc > 1 ? `Render PC-${String.fromCharCode(65 + i)}` : "Render PC";
+          const label = `RenderPC${group.name}-${i + 1}`;
           const row = sheet.addRow({ device: label, ip });
           if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
           ip = ipIncrement(ip, 1);
@@ -230,7 +230,7 @@
         ip = ipIncrement(ip, 1);
 
         for (let i = 0; i < group.pdu; i++) {
-          const label = group.pdu > 1 ? `${cfg.pduType}-${String.fromCharCode(65 + i)}` : cfg.pduType;
+          const label = `PDU${group.name}-${i + 1}`;
           const row = sheet.addRow({ device: label, ip });
           if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
           ip = ipIncrement(ip, 1);
