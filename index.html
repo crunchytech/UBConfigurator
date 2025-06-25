@@ -34,7 +34,7 @@
     <option value="4P/2L-EU">4P/2L-EU</option>
     <option value="4P/4L-EU">4P/4L-EU</option>
   </select>
-  <label>Lane Group ID: <input id="lane-name" type="text" placeholder="Optional"></label>
+  <label>Lane Group ID: <input id="lane-name" type="text" placeholder="e.g., A, B, C, etc."></label>
   <div id="lane-numbers" class="lane-numbers"></div>
   <label><input type="checkbox" id="support-option"> Support Option</label>
   <button onclick="addLaneGroup()">Add Lane Group</button>
@@ -267,8 +267,10 @@
     }
 
     function saveTemplate() {
+      const projectCode = document.getElementById('project-code').value.trim() || 'lane';
+      const filename = `${projectCode}-template.json`;
       const blob = new Blob([JSON.stringify(laneGroups, null, 2)], { type: 'application/json' });
-      saveAs(blob, 'lane-template.json');
+      saveAs(blob, filename);
     }
 
     function loadTemplate(event) {
