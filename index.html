@@ -34,7 +34,7 @@
     <option value="4P/2L-EU">4P/2L-EU</option>
     <option value="4P/4L-EU">4P/4L-EU</option>
   </select>
-  <label>Tracking Group ID: <input id="lane-name" type="text" placeholder="e.g., A, B, C, etc."></label>
+  <label>Tracking Group ID: <input id="tracking-name" type="text" placeholder="e.g., A, B, C, etc."></label>
   <div id="lane-numbers" class="lane-numbers"></div>
   <label><input type="checkbox" id="support-option"> Support Option</label>
   <button onclick="addTrackingGroup()">Add Tracking Group</button>
@@ -91,7 +91,7 @@
 
     function addTrackingGroup() {
       const type = document.getElementById('lane-type').value;
-      const customName = document.getElementById('lane-name').value.trim();
+      const customName = document.getElementById('tracking-name').value.trim();
       const laneInputs = document.querySelectorAll('.lane-input');
       const laneNumbers = Array.from(laneInputs).map(input => input.value.trim()).filter(n => n);
       const support = document.getElementById('support-option').checked;
