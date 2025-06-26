@@ -37,7 +37,7 @@
   <label>Lane Group ID: <input id="lane-name" type="text" placeholder="e.g., A, B, C, etc."></label>
   <div id="lane-numbers" class="lane-numbers"></div>
   <label><input type="checkbox" id="support-option"> Support Option</label>
-  <button onclick="addLaneGroup()">Add Lane Group</button>
+  <button onclick="addTrackingGroup()">Add Lane Group</button>
 
   <button onclick="saveTemplate()">Save Template</button>
   <input type="file" id="load-template" onchange="loadTemplate(event)">
@@ -50,7 +50,7 @@
   <button onclick="generateCSV()">Generate Server Config File</button>
 
   <script>
-    let laneGroups = [];
+    let trackingGroups = [];
     let licenseKey = "LICENSEKEY";
 
     const configs = {
@@ -89,7 +89,7 @@
       }
     }
 
-    function addLaneGroup() {
+    function addTrackingGroup() {
       const type = document.getElementById('lane-type').value;
       const customName = document.getElementById('lane-name').value.trim();
       const laneInputs = document.querySelectorAll('.lane-input');
@@ -98,27 +98,27 @@
 
       const pdu = support ? supportPDUs[type] || 0 : 0;
 
-      laneGroups.push({ type, name: customName || `${type}-${laneGroups.length + 1}`, laneNumbers, support, pdu });
-      renderLaneGroups();
+      trackingGroups.push({ type, name: customName || `${type}-${trackingGroups.length + 1}`, laneNumbers, support, pdu });
+      renderTrackingGroups();
       updatePreview();
     }
 
-    function removeLaneGroup(index) {
-      laneGroups.splice(index, 1);
-      renderLaneGroups();
+    function removeTrackingGroup(index) {
+      trackingGroups.splice(index, 1);
+      renderTrackingGroups();
       updatePreview();
     }
 
-    function renderLaneGroups() {
-      const laneList = document.getElementById('lane-list');
-      laneList.innerHTML = '';
-      laneGroups.forEach((group, index) => {
+    function renderTrackingGroups() {
+      const groupList = document.getElementById('lane-list');
+      groupList.innerHTML = '';
+      trackingGroups.forEach((group, index) => {
         const lanes = group.laneNumbers.join(', ');
         const supportText = group.support ? "with Support" : "no Support";
         const div = document.createElement('div');
         div.className = 'lane-entry';
-        div.innerHTML = `Lane Group ${index + 1}: <strong>${group.name}</strong> (${group.type}) | Lanes: ${lanes} | ${supportText} <button onclick="removeLaneGroup(${index})">Remove</button>`;
-        laneList.appendChild(div);
+        div.innerHTML = `Tracking Group ${index + 1}: <strong>${group.name}</strong> (${group.type}) | Lanes: ${lanes} | ${supportText} <button onclick="removeTrackingGroup(${index})">Remove</button>`;
+        groupList.appendChild(div);
       });
     }
 
@@ -133,7 +133,7 @@
     function updatePreview() {
       let ip = document.getElementById('start-ip').value;
       let count = 1;
-      laneGroups.forEach(g => {
+      trackingGroups.forEach(g => {
         const cfg = configs[g.type];
         count += cfg.pc + cfg.proj + cfg.lidar + cfg.camera + g.pdu;
       });
@@ -148,7 +148,7 @@
       rows.push(["CONFIG VERSION", "3"]);
       rows.push(["UNREAL LICENSE", "replace-me-with-the-license"]);
 
-      laneGroups.forEach((group) => {
+      trackingGroups.forEach((group) => {
         const cfg = configs[group.type];
 
         for (let i = 0; i < cfg.pc; i++) {
@@ -218,7 +218,7 @@
         fgColor: { argb: 'FFEFEFEF' }
       };
 
-      laneGroups.forEach((group, index) => {
+      trackingGroups.forEach((group, index) => {
         const cfg = configs[group.type];
         sheet.addRow([]);
         const headerRow = sheet.addRow([`Lane Group ${index + 1}: ${group.name} (${group.type})`]);
@@ -274,7 +274,7 @@
     function saveTemplate() {
       const projectCode = document.getElementById('project-code').value.trim() || 'lane';
       const filename = `${projectCode}-template.json`;
-      const blob = new Blob([JSON.stringify(laneGroups, null, 2)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify(trackingGroups, null, 2)], { type: 'application/json' });
       saveAs(blob, filename);
     }
 
@@ -284,8 +284,8 @@
       const reader = new FileReader();
       reader.onload = e => {
         try {
-          laneGroups = JSON.parse(e.target.result);
-          renderLaneGroups();
+          trackingGroups = JSON.parse(e.target.result);
+          renderTrackingGroups();
           updatePreview();
         } catch (err) {
           alert('Failed to load template: Invalid format');
