@@ -34,10 +34,10 @@
     <option value="4P/2L-EU">4P/2L-EU</option>
     <option value="4P/4L-EU">4P/4L-EU</option>
   </select>
-  <label>Lane Group ID: <input id="lane-name" type="text" placeholder="e.g., A, B, C, etc."></label>
+  <label>Tracking Group ID: <input id="lane-name" type="text" placeholder="e.g., A, B, C, etc."></label>
   <div id="lane-numbers" class="lane-numbers"></div>
   <label><input type="checkbox" id="support-option"> Support Option</label>
-  <button onclick="addTrackingGroup()">Add Lane Group</button>
+  <button onclick="addTrackingGroup()">Add Tracking Group</button>
 
   <button onclick="saveTemplate()">Save Template</button>
   <input type="file" id="load-template" onchange="loadTemplate(event)">
@@ -221,7 +221,7 @@
       trackingGroups.forEach((group, index) => {
         const cfg = configs[group.type];
         sheet.addRow([]);
-        const headerRow = sheet.addRow([`Lane Group ${index + 1}: ${group.name} (${group.type})`]);
+        const headerRow = sheet.addRow([`Tracking Group ${index + 1}: ${group.name} (${group.type})`]);
         headerRow.eachCell(cell => {
           cell.font = { bold: true };
         });
