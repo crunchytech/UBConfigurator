@@ -65,14 +65,14 @@
     };
 
     const supportPDUs = {
-      "3P/2L": 4,
-      "6P/4L": 6,
-      "4P/2L": 5,
-      "4P/4L": 5,
-      "3P/2L-EU": 4,
-      "6P/4L-EU": 6,
-      "4P/2L-EU": 4,
-      "4P/4L-EU": 4
+      "3P/2L": 3,
+      "6P/4L": 5,
+      "4P/2L": 4,
+      "4P/4L": 4,
+      "3P/2L-EU": 3,
+      "6P/4L-EU": 5,
+      "4P/2L-EU": 3,
+      "4P/4L-EU": 3
     };
 
     function updateLaneInputs() {
@@ -261,6 +261,10 @@
       sheet.addRow([]);
       const serverRow = sheet.addRow(["Server", ip]);
       serverRow.eachCell(cell => cell.font = { bold: true });
+      ip = ipIncrement(ip, 1);
+
+      const serverPDU = sheet.addRow({ device: "Server PDU", ip });
+      serverPDU.eachCell(cell => cell.fill = altFill);
 
       workbook.xlsx.writeBuffer().then(buffer => {
         saveAs(new Blob([buffer]), 'LaneGroups-IPSheet.xlsx');
