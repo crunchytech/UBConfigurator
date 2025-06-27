@@ -181,94 +181,129 @@
     }
 
         function generateExcel() {
-            const workbook = new ExcelJS.Workbook();
-      const sheet = workbook.addWorksheet("IP Sheet");
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("IP Sheet");
 
-      const projectCode = document.getElementById('project-code').value;
-      const gateway = document.getElementById('gateway-ip').value;
-      const dns = document.getElementById('dns-ip').value;
-      const subnetmask = document.getElementById('subnet-mask').value;
-      // sheet.addRow(["Project Code:", projectCode]);
-      // sheet.addRow(["Gateway IP:", gateway]);
-      // if (dns) sheet.addRow(["DNS:", dns]);
-      sheet.addRow([]);
+  const projectCode = document.getElementById('project-code').value;
+  const gateway = document.getElementById('gateway-ip').value;
+  const dns = document.getElementById('dns-ip').value;
+  const subnetmask = document.getElementById('subnet-mask').value;
+  sheet.addRow([]);
 
-      sheet.columns = [
-        { header: "Device", key: "device", width: 20 },
-        { header: "IP Address", key: "ip", width: 20 },
-        { header: "MAC Address", key: "mac", width: 20 },
-        { header: "Serial Number", key: "serial", width: 20 },
-        { header: "Credentials", key: "userpw", width: 20 },
-        { header: "Project Code", key: "projcode", width: 20 },
-        { header: "Gateway IP", key: "gtwip", width: 20 },
-        { header: "DNS", key: "dnsip", width: 20 },
-        { header: "Subnet Mask", key: "subnet", width: 20 }
-      ];
+  sheet.columns = [
+    { header: "Device", key: "device", width: 20 },
+    { header: "IP Address", key: "ip", width: 20 },
+    { header: "MAC Address", key: "mac", width: 20 },
+    { header: "Serial Number", key: "serial", width: 20 },
+    { header: "Credentials", key: "userpw", width: 20 },
+    { header: "Project Code", key: "projcode", width: 20 },
+    { header: "Gateway IP", key: "gtwip", width: 20 },
+    { header: "DNS", key: "dnsip", width: 20 },
+    { header: "Subnet Mask", key: "subnet", width: 20 }
+  ];
 
-      sheet.addRow(
-        dns
-          ? { projcode: projectCode, gtwip: gateway, dnsip: dns , subnet: subnetmask }
-          : { projcode: projectCode, gtwip: gateway , subnet: subnetmask}
-      );
+  sheet.addRow(
+    dns
+      ? { projcode: projectCode, gtwip: gateway, dnsip: dns , subnet: subnetmask }
+      : { projcode: projectCode, gtwip: gateway , subnet: subnetmask}
+  );
 
-      let ip = document.getElementById('start-ip').value;
-      const altFill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFEFEFEF' }
-      };
+  let ip = document.getElementById('start-ip').value;
+  const altFill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFEFEFEF' }
+  };
 
-      trackingGroups.forEach((group, index) => {
-        const cfg = configs[group.type];
-        sheet.addRow([]);
-        const headerRow = sheet.addRow([`Tracking Group ${index + 1}: ${group.name} (${group.type})`]);
-        headerRow.eachCell(cell => {
-          cell.font = { bold: true };
-        });
+  trackingGroups.forEach((group, index) => {
+    const cfg = configs[group.type];
+    sheet.addRow([]);
+    const headerRow = sheet.addRow([`Tracking Group ${index + 1}: ${group.name} (${group.type})`]);
+    headerRow.eachCell(cell => {
+      cell.font = { bold: true };
+    });
 
-        let rowCount = 0;
+    let rowCount = 0;
 
-        for (let i = 0; i < cfg.pc; i++) {
-          const label = `RenderPC ${group.name}-${i + 1}`;
-          const row = sheet.addRow({ device: label, ip });
-          if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
-          ip = ipIncrement(ip, 1);
-        }
+    if (group.type === "6P/4L" || group.type === "6P/4L-EU") {
+      const lanesPerGroup = 2;
+      const numLaneGroups = Math.ceil(group.laneNumbers.length / lanesPerGroup);
 
-        for (let i = 0; i < cfg.proj; i++) {
-          const label = `Projector ${group.name}-${i + 1}`;
-          const row = sheet.addRow({ device: label, ip });
-          if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
-          ip = ipIncrement(ip, 1);
-        }
-
-        const lidarRow = sheet.addRow({ device: `LiDAR ${group.name}`, ip });
-        if (rowCount++ % 2 === 0) lidarRow.eachCell(cell => cell.fill = altFill);
+      for (let lg = 0; lg < numLaneGroups; lg++) {
+        const laneGroupId = lg + 1;
+        // PC (just one per lane group, no instance number)
+        const pcLabel = `${group.name}${laneGroupId}-PC`;
+        const pcRow = sheet.addRow({ device: pcLabel, ip });
+        if (rowCount++ % 2 === 0) pcRow.eachCell(cell => cell.fill = altFill);
         ip = ipIncrement(ip, 1);
 
-        const camRow = sheet.addRow({ device: `Camera ${group.name}`, ip });
-        if (rowCount++ % 2 === 0) camRow.eachCell(cell => cell.fill = altFill);
-        ip = ipIncrement(ip, 1);
-
-        for (let i = 0; i < group.pdu; i++) {
-          const label = `PDU ${group.name}-${i + 1}`;
+        // Projectors
+        for (let i = 0; i < 3; i++) {
+          const label = `${group.name}${laneGroupId}-Projector${i + 1}`;
           const row = sheet.addRow({ device: label, ip });
           if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
           ip = ipIncrement(ip, 1);
         }
-      });
-
-      sheet.addRow([]);
-      const serverRow = sheet.addRow(["Server", ip]);
-      serverRow.eachCell(cell => cell.font = { bold: true });
+        // PDUs (if support option is checked)
+        for (let i = 0; i < group.pdu / numLaneGroups; i++) {
+          const label = `${group.name}${laneGroupId}-PDU${i + 1}`;
+          const row = sheet.addRow({ device: label, ip });
+          if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
+          ip = ipIncrement(ip, 1);
+        }
+      }
+      // LiDAR (one per tracking group)
+      const lidarRow = sheet.addRow({ device: `${group.name}-LiDAR`, ip });
+      if (rowCount++ % 2 === 0) lidarRow.eachCell(cell => cell.fill = altFill);
       ip = ipIncrement(ip, 1);
 
-      const serverPDU = sheet.addRow({ device: "Server PDU", ip });
-      serverPDU.eachCell(cell => cell.fill = altFill);
+      // Camera (one per tracking group)
+      const camRow = sheet.addRow({ device: `${group.name}-Camera`, ip });
+      if (rowCount++ % 2 === 0) camRow.eachCell(cell => cell.fill = altFill);
+      ip = ipIncrement(ip, 1);
 
-      workbook.xlsx.writeBuffer().then(buffer => {
-        saveAs(new Blob([buffer]), 'LaneGroups-IPSheet.xlsx');
-      });
+    } else {
+      // All other configs: lane group = tracking group
+      for (let i = 0; i < cfg.pc; i++) {
+        const label = `${group.name}-PC`;
+        const row = sheet.addRow({ device: label, ip });
+        if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
+        ip = ipIncrement(ip, 1);
+      }
+      for (let i = 0; i < cfg.proj; i++) {
+        const label = `${group.name}-Projector${i + 1}`;
+        const row = sheet.addRow({ device: label, ip });
+        if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
+        ip = ipIncrement(ip, 1);
+      }
+      const lidarRow = sheet.addRow({ device: `${group.name}-LiDAR`, ip });
+      if (rowCount++ % 2 === 0) lidarRow.eachCell(cell => cell.fill = altFill);
+      ip = ipIncrement(ip, 1);
+
+      const camRow = sheet.addRow({ device: `${group.name}-Camera`, ip });
+      if (rowCount++ % 2 === 0) camRow.eachCell(cell => cell.fill = altFill);
+      ip = ipIncrement(ip, 1);
+
+      for (let i = 0; i < group.pdu; i++) {
+        const label = `${group.name}-PDU${i + 1}`;
+        const row = sheet.addRow({ device: label, ip });
+        if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
+        ip = ipIncrement(ip, 1);
+      }
+    }
+  });
+
+  sheet.addRow([]);
+  const serverRow = sheet.addRow(["Server", ip]);
+  serverRow.eachCell(cell => cell.font = { bold: true });
+  ip = ipIncrement(ip, 1);
+
+  const serverPDU = sheet.addRow({ device: "Server PDU", ip });
+  serverPDU.eachCell(cell => cell.fill = altFill);
+
+  workbook.xlsx.writeBuffer().then(buffer => {
+    saveAs(new Blob([buffer]), 'LaneGroups-IPSheet.xlsx');
+  });
     }
 
     function saveTemplate() {
