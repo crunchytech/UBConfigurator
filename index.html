@@ -244,8 +244,9 @@
           if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
           ip = ipIncrement(ip, 1);
         }
-        // PDUs (if support option is checked)
-        for (let i = 0; i < group.pdu / numLaneGroups; i++) {
+        // PDUs per lane group (if support option is checked)
+        const pdusPerLaneGroup = Math.floor(group.pdu / numLaneGroups);
+        for (let i = 0; i < pdusPerLaneGroup; i++) {
           const label = `${group.name}${laneGroupId}-PDU${i + 1}`;
           const row = sheet.addRow({ device: label, ip });
           if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
@@ -261,6 +262,15 @@
       const camRow = sheet.addRow({ device: `${group.name}-Camera`, ip });
       if (rowCount++ % 2 === 0) camRow.eachCell(cell => cell.fill = altFill);
       ip = ipIncrement(ip, 1);
+
+      // Shared PDU for the tracking group (if support option is checked and there are remaining PDUs)
+      const sharedPDUs = group.pdu - (Math.floor(group.pdu / numLaneGroups) * numLaneGroups);
+      for (let i = 0; i < sharedPDUs; i++) {
+        const label = `${group.name}-PDU${i + 1}`;
+        const row = sheet.addRow({ device: label, ip });
+        if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
+        ip = ipIncrement(ip, 1);
+      }
 
     } else {
       // All other configs: lane group = tracking group
