@@ -13,6 +13,13 @@
     .lane-entry button { margin-left: 0.5rem; }
     .preview { font-size: 0.9em; color: #555; }
     .lane-numbers { margin-top: 0.5rem; margin-left: 1rem; }
+    .reference-note {
+      margin-top: 2rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #ddd;
+      font-size: 0.8em;
+      color: #666;
+    }
   </style>
 </head>
 <body>
@@ -49,6 +56,9 @@
 
   <button onclick="generateExcel()">Generate IP Sheet</button>
   <button onclick="generateCSV()">Generate Server Config File</button>
+  <div class="reference-note">
+    Labeling reference: Design Document <strong>UB Labeling v0.1</strong> and Engineering Document <strong>Device Matrix R0_20250624</strong>.
+  </div>
 
   <script>
     let trackingGroups = [];
