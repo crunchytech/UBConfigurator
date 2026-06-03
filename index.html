@@ -239,7 +239,7 @@
       const trackingIds = get6P4LTrackingIds(group.name);
 
       trackingIds.forEach((trackingId, idIndex) => {
-        const pcLabel = `${trackingId}-PC`;
+        const pcLabel = `PC-${trackingId}`;
         const pcRow = sheet.addRow({ device: pcLabel, ip });
         if (rowCount++ % 2 === 0) pcRow.eachCell(cell => cell.fill = altFill);
         ip = ipIncrement(ip, 1);
@@ -253,7 +253,7 @@
 
         const pduCount = Math.floor(group.pdu / trackingIds.length) + (idIndex < (group.pdu % trackingIds.length) ? 1 : 0);
         for (let i = 0; i < pduCount; i++) {
-          const label = `${trackingId}-PDU${i + 1}`;
+          const label = `PDU${i + 1}-${trackingId}`;
           const row = sheet.addRow({ device: label, ip });
           if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
           ip = ipIncrement(ip, 1);
@@ -261,38 +261,38 @@
       });
 
       const sharedTrackingLabel = trackingIds.join('/');
-      const lidarRow = sheet.addRow({ device: `${sharedTrackingLabel}-LiDAR`, ip });
+      const lidarRow = sheet.addRow({ device: `LiDAR-${sharedTrackingLabel}`, ip });
       if (rowCount++ % 2 === 0) lidarRow.eachCell(cell => cell.fill = altFill);
       ip = ipIncrement(ip, 1);
 
-      const camRow = sheet.addRow({ device: `${sharedTrackingLabel}-Camera`, ip });
+      const camRow = sheet.addRow({ device: `Camera-${sharedTrackingLabel}`, ip });
       if (rowCount++ % 2 === 0) camRow.eachCell(cell => cell.fill = altFill);
       ip = ipIncrement(ip, 1);
 
     } else {
       // All other configs: lane group = tracking group
       for (let i = 0; i < cfg.pc; i++) {
-        const label = `${group.name}-PC`;
+        const label = `PC-${group.name}`;
         const row = sheet.addRow({ device: label, ip });
         if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
         ip = ipIncrement(ip, 1);
       }
       for (let i = 0; i < cfg.proj; i++) {
-        const label = `${group.name}-Projector${i + 1}`;
+        const label = `Projector${i + 1}-${group.name}`;
         const row = sheet.addRow({ device: label, ip });
         if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
         ip = ipIncrement(ip, 1);
       }
-      const lidarRow = sheet.addRow({ device: `${group.name}-LiDAR`, ip });
+      const lidarRow = sheet.addRow({ device: `LiDAR-${group.name}`, ip });
       if (rowCount++ % 2 === 0) lidarRow.eachCell(cell => cell.fill = altFill);
       ip = ipIncrement(ip, 1);
 
-      const camRow = sheet.addRow({ device: `${group.name}-Camera`, ip });
+      const camRow = sheet.addRow({ device: `Camera-${group.name}`, ip });
       if (rowCount++ % 2 === 0) camRow.eachCell(cell => cell.fill = altFill);
       ip = ipIncrement(ip, 1);
 
       for (let i = 0; i < group.pdu; i++) {
-        const label = `${group.name}-PDU${i + 1}`;
+        const label = `PDU${i + 1}-${group.name}`;
         const row = sheet.addRow({ device: label, ip });
         if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
         ip = ipIncrement(ip, 1);
