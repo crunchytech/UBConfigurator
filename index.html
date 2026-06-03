@@ -34,7 +34,8 @@
     <option value="4P/2L-EU">4P/2L-EU</option>
     <option value="4P/4L-EU">4P/4L-EU</option>
   </select>
-  <label>Tracking Group ID: <input id="tracking-name" type="text" placeholder="e.g., A, B, C, etc."></label>
+  <label>Tracking Group ID: <input id="tracking-name" type="text" placeholder="e.g., A"></label>
+  <label id="tracking-name-2-wrapper" style="display:none;">Tracking Group ID 2: <input id="tracking-name-2" type="text" placeholder="e.g., B"></label>
   <div id="lane-numbers" class="lane-numbers"></div>
   <label><input type="checkbox" id="support-option"> Support Option</label>
   <button onclick="addTrackingGroup()">Add Tracking Group</button>
@@ -91,6 +92,8 @@
       container.innerHTML = '';
       const type = document.getElementById('lane-type').value;
       const lanes = configs[type].lanes;
+      const secondTrackingWrapper = document.getElementById('tracking-name-2-wrapper');
+      secondTrackingWrapper.style.display = (type === "6P/4L" || type === "6P/4L-EU") ? 'inline-block' : 'none';
       for (let i = 0; i < lanes; i++) {
         const input = document.createElement('input');
         input.type = 'text';
@@ -103,13 +106,18 @@
     function addTrackingGroup() {
       const type = document.getElementById('lane-type').value;
       const customName = document.getElementById('tracking-name').value.trim();
+      const customName2 = document.getElementById('tracking-name-2').value.trim();
       const laneInputs = document.querySelectorAll('.lane-input');
       const laneNumbers = Array.from(laneInputs).map(input => input.value.trim()).filter(n => n);
       const support = document.getElementById('support-option').checked;
 
       const pdu = support ? supportPDUs[type] || 0 : 0;
+      const isDualTracking = type === "6P/4L" || type === "6P/4L-EU";
+      const groupName = isDualTracking
+        ? [customName, customName2].filter(Boolean).join(',') || `${type}-${trackingGroups.length + 1}`
+        : customName || `${type}-${trackingGroups.length + 1}`;
 
-      trackingGroups.push({ type, name: customName || `${type}-${trackingGroups.length + 1}`, laneNumbers, support, pdu });
+      trackingGroups.push({ type, name: groupName, laneNumbers, support, pdu });
       renderTrackingGroups();
       updatePreview();
     }
@@ -261,7 +269,7 @@
         ip = ipIncrement(ip, 1);
 
         for (let i = 0; i < 3; i++) {
-          const label = `Projector-${trackingId}${i + 1}`;
+          const label = `PROJ-${trackingId}${i + 1}`;
           const row = sheet.addRow({ device: label, ip });
           if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
           ip = ipIncrement(ip, 1);
@@ -277,7 +285,7 @@
 
         const projectorPduCount = Math.floor(pduCounts.projectors / trackingIds.length) + (idIndex < (pduCounts.projectors % trackingIds.length) ? 1 : 0);
         for (let i = 0; i < projectorPduCount; i++) {
-          const label = projectorPduCount > 1 ? `PDU-Projectors${i + 1}-${trackingId}` : `PDU-Projectors-${trackingId}`;
+          const label = projectorPduCount > 1 ? `PDU-PROJ${i + 1}-${trackingId}` : `PDU-PROJ-${trackingId}`;
           const row = sheet.addRow({ device: label, ip });
           if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
           ip = ipIncrement(ip, 1);
@@ -311,7 +319,7 @@
         ip = ipIncrement(ip, 1);
       }
       for (let i = 0; i < cfg.proj; i++) {
-        const label = `Projector${i + 1}-${group.name}`;
+        const label = `PROJ${i + 1}-${group.name}`;
         const row = sheet.addRow({ device: label, ip });
         if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
         ip = ipIncrement(ip, 1);
@@ -332,7 +340,7 @@
       }
 
       for (let i = 0; i < pduCounts.projectors; i++) {
-        const label = pduCounts.projectors > 1 ? `PDU-Projectors${i + 1}-${group.name}` : `PDU-Projectors-${group.name}`;
+        const label = pduCounts.projectors > 1 ? `PDU-PROJ${i + 1}-${group.name}` : `PDU-PROJ-${group.name}`;
         const row = sheet.addRow({ device: label, ip });
         if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
         ip = ipIncrement(ip, 1);
