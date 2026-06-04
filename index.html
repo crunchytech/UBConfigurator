@@ -258,7 +258,7 @@
   );
 
   const [designReference, engineeringReference] = getLabelingReferences();
-  const REFERENCE_COLUMN_START = 11;
+  const REFERENCE_COLUMN_START = sheet.columns.length + 2;
   sheet.getColumn(REFERENCE_COLUMN_START).width = 24;
   sheet.getColumn(REFERENCE_COLUMN_START + 1).width = 34;
   sheet.getCell(2, REFERENCE_COLUMN_START).value = "Design Document";
