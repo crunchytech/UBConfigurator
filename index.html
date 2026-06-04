@@ -13,6 +13,13 @@
     .lane-entry button { margin-left: 0.5rem; }
     .preview { font-size: 0.9em; color: #555; }
     .lane-numbers { margin-top: 0.5rem; margin-left: 1rem; }
+    .reference-note {
+      margin-top: 2rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #ddd;
+      font-size: 0.8em;
+      color: #666;
+    }
   </style>
 </head>
 <body>
@@ -34,7 +41,8 @@
     <option value="4P/2L-EU">4P/2L-EU</option>
     <option value="4P/4L-EU">4P/4L-EU</option>
   </select>
-  <label>Tracking Group ID: <input id="tracking-name" type="text" placeholder="e.g., A, B, C, etc."></label>
+  <label>Tracking Group ID: <input id="tracking-name" type="text" placeholder="e.g., A"></label>
+  <label id="tracking-name-2-wrapper" style="display:none;">Tracking Group ID 2: <input id="tracking-name-2" type="text" placeholder="e.g., B"></label>
   <div id="lane-numbers" class="lane-numbers"></div>
   <label><input type="checkbox" id="support-option"> Support Option</label>
   <button onclick="addTrackingGroup()">Add Tracking Group</button>
@@ -48,6 +56,9 @@
 
   <button onclick="generateExcel()">Generate IP Sheet</button>
   <button onclick="generateCSV()">Generate Server Config File</button>
+  <div class="reference-note">
+    Labeling reference: Design Document <strong>UB Labeling v0.1</strong> and Engineering Document <strong>Device Matrix R0_20250624</strong>.
+  </div>
 
   <script>
     let trackingGroups = [];
@@ -75,11 +86,24 @@
       "4P/4L-EU": 3
     };
 
+    const supportPDUByDevice = {
+      "3P/2L": { pc: 1, lidar: 1, projectors: 1 },
+      "6P/4L": { pc: 2, lidar: 1, projectors: 2 },
+      "4P/2L": { pc: 1, lidar: 1, projectors: 2 },
+      "4P/4L": { pc: 1, lidar: 1, projectors: 2 },
+      "3P/2L-EU": { pc: 1, lidar: 1, projectors: 1 },
+      "6P/4L-EU": { pc: 2, lidar: 1, projectors: 2 },
+      "4P/2L-EU": { pc: 1, lidar: 1, projectors: 1 },
+      "4P/4L-EU": { pc: 1, lidar: 1, projectors: 1 }
+    };
+
     function updateLaneInputs() {
       const container = document.getElementById('lane-numbers');
       container.innerHTML = '';
       const type = document.getElementById('lane-type').value;
       const lanes = configs[type].lanes;
+      const secondTrackingWrapper = document.getElementById('tracking-name-2-wrapper');
+      secondTrackingWrapper.style.display = (type === "6P/4L" || type === "6P/4L-EU") ? 'inline-block' : 'none';
       for (let i = 0; i < lanes; i++) {
         const input = document.createElement('input');
         input.type = 'text';
@@ -92,13 +116,18 @@
     function addTrackingGroup() {
       const type = document.getElementById('lane-type').value;
       const customName = document.getElementById('tracking-name').value.trim();
+      const customName2 = document.getElementById('tracking-name-2').value.trim();
       const laneInputs = document.querySelectorAll('.lane-input');
       const laneNumbers = Array.from(laneInputs).map(input => input.value.trim()).filter(n => n);
       const support = document.getElementById('support-option').checked;
 
       const pdu = support ? supportPDUs[type] || 0 : 0;
+      const isDualTracking = type === "6P/4L" || type === "6P/4L-EU";
+      const groupName = isDualTracking
+        ? [customName, customName2].filter(Boolean).join(',') || `${type}-${trackingGroups.length + 1}`
+        : customName || `${type}-${trackingGroups.length + 1}`;
 
-      trackingGroups.push({ type, name: customName || `${type}-${trackingGroups.length + 1}`, laneNumbers, support, pdu });
+      trackingGroups.push({ type, name: groupName, laneNumbers, support, pdu });
       renderTrackingGroups();
       updatePreview();
     }
@@ -140,6 +169,20 @@
       let lastIP = ip;
       for (let i = 1; i < count; i++) lastIP = ipIncrement(lastIP, 1);
       document.getElementById('ip-preview').textContent = `Preview IP Range: ${ip} - ${lastIP}`;
+    }
+
+    function get6P4LTrackingIds(groupName) {
+      const ids = groupName
+        .split(',')
+        .map(id => id.trim())
+        .filter(id => id);
+      if (ids.length >= 2) return ids.slice(0, 2);
+      const base = ids[0] || groupName.trim() || 'A';
+      return [`${base}1`, `${base}2`];
+    }
+
+    function getSupportPDUCounts(type) {
+      return supportPDUByDevice[type] || { pc: 0, lidar: 0, projectors: 0 };
     }
 
     function generateCSV() {
@@ -226,47 +269,50 @@
     let rowCount = 0;
 
     if (group.type === "6P/4L" || group.type === "6P/4L-EU") {
-      const lanesPerGroup = 2;
-      const numLaneGroups = Math.ceil(group.laneNumbers.length / lanesPerGroup);
+      const trackingIds = get6P4LTrackingIds(group.name);
+      const pduCounts = (group.support || group.pdu > 0) ? getSupportPDUCounts(group.type) : { pc: 0, lidar: 0, projectors: 0 };
 
-      for (let lg = 0; lg < numLaneGroups; lg++) {
-        const laneGroupId = lg + 1;
-        // PC (just one per lane group, no instance number)
-        const pcLabel = `${group.name}${laneGroupId}-PC`;
+      trackingIds.forEach((trackingId, idIndex) => {
+        const pcLabel = `PC-${trackingId}`;
         const pcRow = sheet.addRow({ device: pcLabel, ip });
         if (rowCount++ % 2 === 0) pcRow.eachCell(cell => cell.fill = altFill);
         ip = ipIncrement(ip, 1);
 
-        // Projectors
         for (let i = 0; i < 3; i++) {
-          const label = `${group.name}${laneGroupId}-Projector${i + 1}`;
+          const label = `PROJ-${trackingId}${i + 1}`;
           const row = sheet.addRow({ device: label, ip });
           if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
           ip = ipIncrement(ip, 1);
         }
-        // PDUs per lane group (if support option is checked)
-        const pdusPerLaneGroup = Math.floor(group.pdu / numLaneGroups);
-        for (let i = 0; i < pdusPerLaneGroup; i++) {
-          const label = `${group.name}${laneGroupId}-PDU${i + 1}`;
+
+        const pcPduCount = Math.floor(pduCounts.pc / trackingIds.length) + (idIndex < (pduCounts.pc % trackingIds.length) ? 1 : 0);
+        for (let i = 0; i < pcPduCount; i++) {
+          const label = pcPduCount > 1 ? `PDU-PC${i + 1}-${trackingId}` : `PDU-PC-${trackingId}`;
           const row = sheet.addRow({ device: label, ip });
           if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
           ip = ipIncrement(ip, 1);
         }
-      }
-      // LiDAR (one per tracking group)
-      const lidarRow = sheet.addRow({ device: `${group.name}-LiDAR`, ip });
+
+        const projectorPduCount = Math.floor(pduCounts.projectors / trackingIds.length) + (idIndex < (pduCounts.projectors % trackingIds.length) ? 1 : 0);
+        for (let i = 0; i < projectorPduCount; i++) {
+          const label = projectorPduCount > 1 ? `PDU-PROJ${i + 1}-${trackingId}` : `PDU-PROJ-${trackingId}`;
+          const row = sheet.addRow({ device: label, ip });
+          if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
+          ip = ipIncrement(ip, 1);
+        }
+      });
+
+      const sharedTrackingLabel = trackingIds.join('/');
+      const lidarRow = sheet.addRow({ device: `LiDAR-${sharedTrackingLabel}`, ip });
       if (rowCount++ % 2 === 0) lidarRow.eachCell(cell => cell.fill = altFill);
       ip = ipIncrement(ip, 1);
 
-      // Camera (one per tracking group)
-      const camRow = sheet.addRow({ device: `${group.name}-Camera`, ip });
+      const camRow = sheet.addRow({ device: `Camera-${sharedTrackingLabel}`, ip });
       if (rowCount++ % 2 === 0) camRow.eachCell(cell => cell.fill = altFill);
       ip = ipIncrement(ip, 1);
 
-      // Shared PDU for the tracking group (if support option is checked and there are remaining PDUs)
-      const sharedPDUs = group.pdu - (Math.floor(group.pdu / numLaneGroups) * numLaneGroups);
-      for (let i = 0; i < sharedPDUs; i++) {
-        const label = `${group.name}-PDU${i + 1}`;
+      for (let i = 0; i < pduCounts.lidar; i++) {
+        const label = pduCounts.lidar > 1 ? `PDU-LiDAR${i + 1}-${sharedTrackingLabel}` : `PDU-LiDAR-${sharedTrackingLabel}`;
         const row = sheet.addRow({ device: label, ip });
         if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
         ip = ipIncrement(ip, 1);
@@ -274,28 +320,44 @@
 
     } else {
       // All other configs: lane group = tracking group
+      const pduCounts = (group.support || group.pdu > 0) ? getSupportPDUCounts(group.type) : { pc: 0, lidar: 0, projectors: 0 };
+
       for (let i = 0; i < cfg.pc; i++) {
-        const label = `${group.name}-PC`;
+        const label = `PC-${group.name}`;
         const row = sheet.addRow({ device: label, ip });
         if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
         ip = ipIncrement(ip, 1);
       }
       for (let i = 0; i < cfg.proj; i++) {
-        const label = `${group.name}-Projector${i + 1}`;
+        const label = `PROJ${i + 1}-${group.name}`;
         const row = sheet.addRow({ device: label, ip });
         if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
         ip = ipIncrement(ip, 1);
       }
-      const lidarRow = sheet.addRow({ device: `${group.name}-LiDAR`, ip });
+      const lidarRow = sheet.addRow({ device: `LiDAR-${group.name}`, ip });
       if (rowCount++ % 2 === 0) lidarRow.eachCell(cell => cell.fill = altFill);
       ip = ipIncrement(ip, 1);
 
-      const camRow = sheet.addRow({ device: `${group.name}-Camera`, ip });
+      const camRow = sheet.addRow({ device: `Camera-${group.name}`, ip });
       if (rowCount++ % 2 === 0) camRow.eachCell(cell => cell.fill = altFill);
       ip = ipIncrement(ip, 1);
 
-      for (let i = 0; i < group.pdu; i++) {
-        const label = `${group.name}-PDU${i + 1}`;
+      for (let i = 0; i < pduCounts.pc; i++) {
+        const label = pduCounts.pc > 1 ? `PDU-PC${i + 1}-${group.name}` : `PDU-PC-${group.name}`;
+        const row = sheet.addRow({ device: label, ip });
+        if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
+        ip = ipIncrement(ip, 1);
+      }
+
+      for (let i = 0; i < pduCounts.projectors; i++) {
+        const label = pduCounts.projectors > 1 ? `PDU-PROJ${i + 1}-${group.name}` : `PDU-PROJ-${group.name}`;
+        const row = sheet.addRow({ device: label, ip });
+        if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
+        ip = ipIncrement(ip, 1);
+      }
+
+      for (let i = 0; i < pduCounts.lidar; i++) {
+        const label = pduCounts.lidar > 1 ? `PDU-LiDAR${i + 1}-${group.name}` : `PDU-LiDAR-${group.name}`;
         const row = sheet.addRow({ device: label, ip });
         if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
         ip = ipIncrement(ip, 1);
