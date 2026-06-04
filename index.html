@@ -185,6 +185,13 @@
       return supportPDUByDevice[type] || { pc: 0, lidar: 0, projectors: 0 };
     }
 
+    function getLabelingReferences() {
+      const refs = Array.from(document.querySelectorAll('.reference-note strong'))
+        .map(el => el.textContent.trim())
+        .filter(Boolean);
+      return [refs[0] || '', refs[1] || ''];
+    }
+
     function generateCSV() {
       let ip = document.getElementById('start-ip').value;
       const rows = [];
@@ -250,6 +257,17 @@
       ? { projcode: projectCode, gtwip: gateway, dnsip: dns , subnet: subnetmask }
       : { projcode: projectCode, gtwip: gateway , subnet: subnetmask}
   );
+
+  const [designReference, engineeringReference] = getLabelingReferences();
+  const rightColumnStart = 11;
+  sheet.getColumn(rightColumnStart).width = 24;
+  sheet.getColumn(rightColumnStart + 1).width = 34;
+  sheet.getCell(2, rightColumnStart).value = "Design Document";
+  sheet.getCell(2, rightColumnStart).font = { bold: true };
+  sheet.getCell(2, rightColumnStart + 1).value = designReference;
+  sheet.getCell(3, rightColumnStart).value = "Engineering Document";
+  sheet.getCell(3, rightColumnStart).font = { bold: true };
+  sheet.getCell(3, rightColumnStart + 1).value = engineeringReference;
 
   let ip = document.getElementById('start-ip').value;
   const altFill = {
