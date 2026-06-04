@@ -57,7 +57,7 @@
   <button onclick="generateExcel()">Generate IP Sheet</button>
   <button onclick="generateCSV()">Generate Server Config File</button>
   <div class="reference-note">
-    Labeling reference: Design Document <strong>UB Labeling v0.1</strong> and Engineering Document <strong>Device Matrix R0_20250624</strong>.
+    Labeling reference: Design Document <strong id="design-reference">UB Labeling v0.1</strong> and Engineering Document <strong id="engineering-reference">Device Matrix R0_20250624</strong>.
   </div>
 
   <script>
@@ -185,6 +185,12 @@
       return supportPDUByDevice[type] || { pc: 0, lidar: 0, projectors: 0 };
     }
 
+    function getLabelingReferences() {
+      const designReference = document.getElementById('design-reference')?.textContent?.trim() ?? '';
+      const engineeringReference = document.getElementById('engineering-reference')?.textContent?.trim() ?? '';
+      return { designReference, engineeringReference };
+    }
+
     function generateCSV() {
       let ip = document.getElementById('start-ip').value;
       const rows = [];
@@ -250,6 +256,17 @@
       ? { projcode: projectCode, gtwip: gateway, dnsip: dns , subnet: subnetmask }
       : { projcode: projectCode, gtwip: gateway , subnet: subnetmask}
   );
+
+  const { designReference, engineeringReference } = getLabelingReferences();
+  const REFERENCE_COLUMN_START = sheet.columnCount + 2;
+  sheet.getColumn(REFERENCE_COLUMN_START).width = 24;
+  sheet.getColumn(REFERENCE_COLUMN_START + 1).width = 34;
+  sheet.getCell(2, REFERENCE_COLUMN_START).value = "Design Document";
+  sheet.getCell(2, REFERENCE_COLUMN_START).font = { bold: true };
+  sheet.getCell(2, REFERENCE_COLUMN_START + 1).value = designReference;
+  sheet.getCell(3, REFERENCE_COLUMN_START).value = "Engineering Document";
+  sheet.getCell(3, REFERENCE_COLUMN_START).font = { bold: true };
+  sheet.getCell(3, REFERENCE_COLUMN_START + 1).value = engineeringReference;
 
   let ip = document.getElementById('start-ip').value;
   const altFill = {
