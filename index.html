@@ -57,7 +57,7 @@
   <button onclick="generateExcel()">Generate IP Sheet</button>
   <button onclick="generateCSV()">Generate Server Config File</button>
   <div class="reference-note">
-    Labeling reference: Design Document <strong>UB Labeling v0.1</strong> and Engineering Document <strong>Device Matrix R0_20250624</strong>.
+    Labeling reference: Design Document <strong id="design-reference">UB Labeling v0.1</strong> and Engineering Document <strong id="engineering-reference">Device Matrix R0_20250624</strong>.
   </div>
 
   <script>
@@ -186,10 +186,9 @@
     }
 
     function getLabelingReferences() {
-      const refs = Array.from(document.querySelectorAll('.reference-note strong'))
-        .map(el => el.textContent.trim())
-        .filter(Boolean);
-      return [refs[0] || '', refs[1] || ''];
+      const designReference = document.getElementById('design-reference')?.textContent?.trim() || '';
+      const engineeringReference = document.getElementById('engineering-reference')?.textContent?.trim() || '';
+      return [designReference, engineeringReference];
     }
 
     function generateCSV() {
@@ -259,15 +258,15 @@
   );
 
   const [designReference, engineeringReference] = getLabelingReferences();
-  const rightColumnStart = 11;
-  sheet.getColumn(rightColumnStart).width = 24;
-  sheet.getColumn(rightColumnStart + 1).width = 34;
-  sheet.getCell(2, rightColumnStart).value = "Design Document";
-  sheet.getCell(2, rightColumnStart).font = { bold: true };
-  sheet.getCell(2, rightColumnStart + 1).value = designReference;
-  sheet.getCell(3, rightColumnStart).value = "Engineering Document";
-  sheet.getCell(3, rightColumnStart).font = { bold: true };
-  sheet.getCell(3, rightColumnStart + 1).value = engineeringReference;
+  const REFERENCE_COLUMN_START = 11;
+  sheet.getColumn(REFERENCE_COLUMN_START).width = 24;
+  sheet.getColumn(REFERENCE_COLUMN_START + 1).width = 34;
+  sheet.getCell(2, REFERENCE_COLUMN_START).value = "Design Document";
+  sheet.getCell(2, REFERENCE_COLUMN_START).font = { bold: true };
+  sheet.getCell(2, REFERENCE_COLUMN_START + 1).value = designReference;
+  sheet.getCell(3, REFERENCE_COLUMN_START).value = "Engineering Document";
+  sheet.getCell(3, REFERENCE_COLUMN_START).font = { bold: true };
+  sheet.getCell(3, REFERENCE_COLUMN_START + 1).value = engineeringReference;
 
   let ip = document.getElementById('start-ip').value;
   const altFill = {
