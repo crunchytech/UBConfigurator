@@ -188,7 +188,7 @@
     function getLabelingReferences() {
       const designReference = document.getElementById('design-reference')?.textContent?.trim() || '';
       const engineeringReference = document.getElementById('engineering-reference')?.textContent?.trim() || '';
-      return [designReference, engineeringReference];
+      return { designReference, engineeringReference };
     }
 
     function generateCSV() {
@@ -257,8 +257,8 @@
       : { projcode: projectCode, gtwip: gateway , subnet: subnetmask}
   );
 
-  const [designReference, engineeringReference] = getLabelingReferences();
-  const REFERENCE_COLUMN_START = sheet.columns.length + 2;
+  const { designReference, engineeringReference } = getLabelingReferences();
+  const REFERENCE_COLUMN_START = sheet.getRow(1).cellCount + 2;
   sheet.getColumn(REFERENCE_COLUMN_START).width = 24;
   sheet.getColumn(REFERENCE_COLUMN_START + 1).width = 34;
   sheet.getCell(2, REFERENCE_COLUMN_START).value = "Design Document";
