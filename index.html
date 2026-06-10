@@ -6,58 +6,278 @@
   <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 2rem; }
-    .group-container { margin-top: 1rem; margin-bottom: 2rem; }
-    .lane-entry { margin-bottom: 0.5rem; }
-    .lane-entry input[type="text"] { width: 150px; margin-left: 0.5rem; }
-    .lane-entry button { margin-left: 0.5rem; }
-    .preview { font-size: 0.9em; color: #555; }
-    .lane-numbers { margin-top: 0.5rem; margin-left: 1rem; }
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --surface: #ffffff;
+      --surface-muted: #f8faff;
+      --text: #18212f;
+      --text-muted: #5d6a7d;
+      --primary: #2e6cff;
+      --primary-hover: #1f5ef4;
+      --primary-soft: #e9f0ff;
+      --border: #d9e1ef;
+      --danger: #d6415d;
+      --danger-hover: #bd2f4b;
+      --shadow: 0 24px 48px -34px rgba(22, 36, 64, 0.45);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(145deg, #eff3ff 0%, var(--bg) 40%, #eef6ff 100%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .app-shell {
+      max-width: 980px;
+      margin: 0 auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 1.5rem 2rem;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, #fcfdff 0%, #f7faff 100%);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.6rem;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      margin: 0.35rem 0 0;
+      font-size: 0.92rem;
+      color: var(--text-muted);
+    }
+
+    .content {
+      padding: 1.5rem 2rem 2rem;
+      display: grid;
+      gap: 1.25rem;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+      padding: 1rem;
+      display: grid;
+      gap: 0.9rem;
+    }
+
+    .panel-muted {
+      background: var(--surface-muted);
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.9rem;
+    }
+
+    label {
+      display: grid;
+      gap: 0.45rem;
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    input[type="text"],
+    select,
+    input[type="file"] {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      padding: 0.6rem 0.75rem;
+      font-size: 0.9rem;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    input[type="text"]:focus,
+    select:focus,
+    input[type="file"]:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(46, 108, 255, 0.16);
+    }
+
+    .action-row,
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      align-items: center;
+    }
+
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 10px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.88rem;
+      font-weight: 600;
+      padding: 0.62rem 0.95rem;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.15s ease;
+    }
+
+    button:hover {
+      background: var(--primary-hover);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .lane-numbers {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.6rem;
+    }
+
+    .lane-entry {
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: #fff;
+      padding: 0.7rem 0.8rem;
+      margin-bottom: 0.55rem;
+      font-size: 0.9rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .lane-entry button {
+      background: var(--danger);
+      padding: 0.45rem 0.75rem;
+      font-size: 0.8rem;
+    }
+
+    .lane-entry button:hover {
+      background: var(--danger-hover);
+    }
+
+    .group-container {
+      margin-top: 0.2rem;
+    }
+
+    .preview {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      background: var(--primary-soft);
+      border: 1px solid #d7e4ff;
+      border-radius: 10px;
+      padding: 0.7rem 0.85rem;
+    }
+
     .reference-note {
-      margin-top: 2rem;
-      padding-top: 0.75rem;
-      border-top: 1px solid #ddd;
-      font-size: 0.8em;
-      color: #666;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+      padding-top: 0.9rem;
+      margin-top: 0.2rem;
+    }
+
+    .checkbox-label {
+      display: inline-flex;
+      gap: 0.5rem;
+      align-items: center;
+      font-size: 0.88rem;
+      font-weight: 500;
+      color: var(--text);
     }
   </style>
 </head>
 <body>
-  <h1>Lane Group Excel Generator</h1>
-<label>Project Code: <input id="project-code" placeholder="Enter project code"></label><br>
-<label>Gateway IP: <input id="gateway-ip" placeholder="Enter gateway IP"></label><br>
-<label>DNS: </label><input id="dns-ip" placeholder="Enter DNS"></label><br>
-  <label>Starting IP Address: <input id="start-ip" type="text" value="192.168.0.10" oninput="updatePreview()"></label><br>
-  <label>Subnet Mask: <input id="subnet-mask" type="text" value="255.255.255.0"></label><br><br>
+  <div class="app-shell">
+    <div class="header">
+      <h1>Lane Group Excel Generator</h1>
+      <p class="subtitle">Create tracking groups and export professional IP and server configuration files.</p>
+    </div>
+    <div class="content">
+      <div class="panel panel-muted">
+        <div class="field-grid">
+          <label>Project Code
+            <input id="project-code" placeholder="Enter project code">
+          </label>
+          <label>Gateway IP
+            <input id="gateway-ip" placeholder="Enter gateway IP">
+          </label>
+          <label>DNS
+            <input id="dns-ip" placeholder="Enter DNS">
+          </label>
+          <label>Starting IP Address
+            <input id="start-ip" type="text" value="192.168.0.10" oninput="updatePreview()">
+          </label>
+          <label>Subnet Mask
+            <input id="subnet-mask" type="text" value="255.255.255.0">
+          </label>
+        </div>
+      </div>
 
-  <select id="lane-type" onchange="updateLaneInputs()">
-    <option value="" disabled selected>Select configuration</option>
-    <option value="3P/2L">3P/2L</option>
-    <option value="6P/4L">6P/4L</option>
-    <option value="4P/2L">4P/2L</option>
-    <option value="4P/4L">4P/4L</option>
-    <option value="3P/2L-EU">3P/2L-EU</option>
-    <option value="6P/4L-EU">6P/4L-EU</option>
-    <option value="4P/2L-EU">4P/2L-EU</option>
-    <option value="4P/4L-EU">4P/4L-EU</option>
-  </select>
-  <label>Tracking Group ID: <input id="tracking-name" type="text" placeholder="e.g., A"></label>
-  <label id="tracking-name-2-wrapper" style="display:none;">Tracking Group ID 2: <input id="tracking-name-2" type="text" placeholder="e.g., B"></label>
-  <div id="lane-numbers" class="lane-numbers"></div>
-  <label><input type="checkbox" id="support-option"> Support Option</label>
-  <button onclick="addTrackingGroup()">Add Tracking Group</button>
+      <div class="panel">
+        <div class="field-grid">
+          <label>Configuration
+            <select id="lane-type" onchange="updateLaneInputs()">
+              <option value="" disabled selected>Select configuration</option>
+              <option value="3P/2L">3P/2L</option>
+              <option value="6P/4L">6P/4L</option>
+              <option value="4P/2L">4P/2L</option>
+              <option value="4P/4L">4P/4L</option>
+              <option value="3P/2L-EU">3P/2L-EU</option>
+              <option value="6P/4L-EU">6P/4L-EU</option>
+              <option value="4P/2L-EU">4P/2L-EU</option>
+              <option value="4P/4L-EU">4P/4L-EU</option>
+            </select>
+          </label>
+          <label>Tracking Group ID
+            <input id="tracking-name" type="text" placeholder="e.g., A">
+          </label>
+          <label id="tracking-name-2-wrapper" style="display:none;">Tracking Group ID 2
+            <input id="tracking-name-2" type="text" placeholder="e.g., B">
+          </label>
+        </div>
 
-  <button onclick="saveTemplate()">Save Template</button>
-  <input type="file" id="load-template" onchange="loadTemplate(event)">
+        <div id="lane-numbers" class="lane-numbers"></div>
 
-  <div id="lane-list" class="group-container"></div>
+        <div class="action-row">
+          <label class="checkbox-label"><input type="checkbox" id="support-option"> Support Option</label>
+          <button onclick="addTrackingGroup()">Add Tracking Group</button>
+          <button onclick="saveTemplate()">Save Template</button>
+          <input type="file" id="load-template" onchange="loadTemplate(event)">
+        </div>
+      </div>
 
-  <div class="preview" id="ip-preview"></div>
-
-  <button onclick="generateExcel()">Generate IP Sheet</button>
-  <button onclick="generateCSV()">Generate Server Config File</button>
-  <div class="reference-note">
-    Labeling reference: Design Document <strong id="design-reference">UB Labeling v0.1</strong> and Engineering Document <strong id="engineering-reference">Device Matrix R0_20250624</strong>.
+      <div class="panel">
+        <div id="lane-list" class="group-container"></div>
+        <div class="preview" id="ip-preview"></div>
+        <div class="button-row">
+          <button onclick="generateExcel()">Generate IP Sheet</button>
+          <button onclick="generateCSV()">Generate Server Config File</button>
+        </div>
+        <div class="reference-note">
+          Labeling reference: Design Document <strong id="design-reference">UB Labeling v0.1</strong> and Engineering Document <strong id="engineering-reference">Device Matrix R0_20250624</strong>.
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
