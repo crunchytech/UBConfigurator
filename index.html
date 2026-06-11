@@ -525,9 +525,14 @@
         const normalizedGroup = normalizeTrackingGroup(group, index);
         const cfg = configs[normalizedGroup.type];
         const laneGroups = normalizedGroup.laneGroups;
+        const pduCounts = (normalizedGroup.support || normalizedGroup.pdu > 0)
+          ? getSupportPDUCounts(normalizedGroup.type)
+          : { pc: 0, lidar: 0, projectors: 0 };
+        const isDualTracking = isDualTrackingType(normalizedGroup.type);
 
         const projectorsPerPc = Math.floor(cfg.proj / cfg.pc);
         const projectorRemainder = cfg.proj % cfg.pc;
+        const laneGroupCount = Math.max(1, laneGroups.length);
         for (let i = 0; i < cfg.pc; i++) {
           rows.push(["COMPUTER IP", ip]);
           ip = ipIncrement(ip, 1);
@@ -553,9 +558,18 @@
             rows.push(["PROJECTOR LABEL", label]);
             rows.push(["PROJECTOR MODEL", "OPTOMA"]);
           }
+
+          if (isDualTracking) {
+            const pcPduCount = Math.floor(pduCounts.pc / laneGroupCount) + (i < (pduCounts.pc % laneGroupCount) ? 1 : 0);
+            const projectorPduCount = Math.floor(pduCounts.projectors / laneGroupCount) + (i < (pduCounts.projectors % laneGroupCount) ? 1 : 0);
+            ip = ipIncrement(ip, pcPduCount + projectorPduCount);
+          }
         }
 
-        ip = ipIncrement(ip, cfg.lidar + cfg.camera + normalizedGroup.pdu);
+        const trailingPduCount = isDualTracking
+          ? pduCounts.lidar
+          : (pduCounts.pc + pduCounts.projectors + pduCounts.lidar);
+        ip = ipIncrement(ip, cfg.lidar + cfg.camera + trailingPduCount);
       });
 
 
