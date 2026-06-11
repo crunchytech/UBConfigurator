@@ -445,8 +445,9 @@
       Array.from(laneInputs).forEach(input => {
         const laneNumber = input.value.trim();
         if (!laneNumber) return;
-        const laneGroupIndex = Number(input.dataset.laneGroupIndex || 0);
-        const laneGroup = laneGroups[laneGroupIndex] || laneGroups[0];
+        const laneGroupIndex = Number(input.dataset.laneGroupIndex);
+        if (!Number.isInteger(laneGroupIndex) || laneGroupIndex < 0 || laneGroupIndex >= laneGroups.length) return;
+        const laneGroup = laneGroups[laneGroupIndex];
         laneGroup.laneNumbers.push(laneNumber);
       });
 
@@ -503,9 +504,7 @@
     }
 
     function get6P4LTrackingIds(group, index = 0) {
-      const laneGroups = getLaneGroups(group, index);
-      if (laneGroups.length >= 2) return laneGroups.slice(0, 2).map(laneGroup => laneGroup.id);
-      return parse6P4LTrackingIds(group.name, `${group.type || 'A'}-${index + 1}`);
+      return getLaneGroups(group, index).slice(0, 2).map(laneGroup => laneGroup.id);
     }
 
     function getSupportPDUCounts(type) {
