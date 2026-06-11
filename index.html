@@ -526,26 +526,33 @@
         const cfg = configs[normalizedGroup.type];
         const laneGroups = normalizedGroup.laneGroups;
 
+        const projectorsPerPc = Math.floor(cfg.proj / cfg.pc);
+        const projectorRemainder = cfg.proj % cfg.pc;
         for (let i = 0; i < cfg.pc; i++) {
           rows.push(["COMPUTER IP", ip]);
           ip = ipIncrement(ip, 1);
-          const laneGroup = laneGroups[i];
-          if (laneGroup) {
-            laneGroup.laneNumbers.forEach(lane => {
-              rows.push(["LANE NUMBER", lane]);
-            });
+
+          const laneNumbersForPc = laneGroups[i]?.laneNumbers || [];
+          laneNumbersForPc.forEach(lane => {
+            rows.push(["LANE NUMBER", lane]);
+          });
+
+          const firstLane = laneNumbersForPc[0];
+          const lastLane = laneNumbersForPc[laneNumbersForPc.length - 1];
+          const laneLabelPrefix = (firstLane && lastLane)
+            ? (firstLane === lastLane ? `Lane ${firstLane}` : `Lane ${firstLane}-${lastLane}`)
+            : `Lane Group ${i + 1}`;
+          const projectorCount = projectorsPerPc + (i < projectorRemainder ? 1 : 0);
+          let projectorIndex = 0;
+
+          for (let j = 0; j < projectorCount; j++) {
+            const label = `${laneLabelPrefix} ${String.fromCharCode(65 + projectorIndex)}`;
+            projectorIndex++;
+            rows.push(["PROJECTOR IP", ip]);
+            ip = ipIncrement(ip, 1);
+            rows.push(["PROJECTOR LABEL", label]);
+            rows.push(["PROJECTOR MODEL", "OPTOMA"]);
           }
-        }
-
-        const firstLane = normalizedGroup.laneNumbers[0];
-        const lastLane = normalizedGroup.laneNumbers[normalizedGroup.laneNumbers.length - 1];
-
-        for (let i = 0; i < cfg.proj; i++) {
-          const label = `Lane ${firstLane}-${lastLane} ${String.fromCharCode(65 + i)}`;
-          rows.push(["PROJECTOR IP", ip]);
-          ip = ipIncrement(ip, 1);
-          rows.push(["PROJECTOR LABEL", label]);
-          rows.push(["PROJECTOR MODEL", "OPTOMA"]);
         }
 
         ip = ipIncrement(ip, cfg.lidar + cfg.camera + normalizedGroup.pdu);
