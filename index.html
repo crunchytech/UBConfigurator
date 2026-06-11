@@ -521,20 +521,24 @@
       rows.push(["CONFIG VERSION", "3"]);
       rows.push(["UNREAL LICENSE", "replace-me-with-the-license"]);
 
-      trackingGroups.forEach((group) => {
-        const cfg = configs[group.type];
+      trackingGroups.forEach((group, index) => {
+        const normalizedGroup = normalizeTrackingGroup(group, index);
+        const cfg = configs[normalizedGroup.type];
+        const laneGroups = normalizedGroup.laneGroups;
 
         for (let i = 0; i < cfg.pc; i++) {
           rows.push(["COMPUTER IP", ip]);
           ip = ipIncrement(ip, 1);
+          const laneGroup = laneGroups[i];
+          if (laneGroup) {
+            laneGroup.laneNumbers.forEach(lane => {
+              rows.push(["LANE NUMBER", lane]);
+            });
+          }
         }
 
-        group.laneNumbers.forEach(lane => {
-          rows.push(["LANE NUMBER", lane]);
-        });
-
-        const firstLane = group.laneNumbers[0];
-        const lastLane = group.laneNumbers[group.laneNumbers.length - 1];
+        const firstLane = normalizedGroup.laneNumbers[0];
+        const lastLane = normalizedGroup.laneNumbers[normalizedGroup.laneNumbers.length - 1];
 
         for (let i = 0; i < cfg.proj; i++) {
           const label = `Lane ${firstLane}-${lastLane} ${String.fromCharCode(65 + i)}`;
@@ -544,7 +548,7 @@
           rows.push(["PROJECTOR MODEL", "OPTOMA"]);
         }
 
-        ip = ipIncrement(ip, cfg.lidar + cfg.camera + group.pdu);
+        ip = ipIncrement(ip, cfg.lidar + cfg.camera + normalizedGroup.pdu);
       });
 
 
