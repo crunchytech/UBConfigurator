@@ -152,6 +152,22 @@
       gap: 0.6rem;
     }
 
+    .lane-group-block {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      padding: 0.6rem;
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .lane-group-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
     .lane-entry {
       border: 1px solid var(--border);
       border-radius: 11px;
@@ -248,10 +264,10 @@
               <option value="4P/4L-EU">4P/4L-EU</option>
             </select>
           </label>
-          <label>Tracking Group ID
+          <label>Lane Group ID
             <input id="tracking-name" type="text" placeholder="e.g., A">
           </label>
-          <label id="tracking-name-2-wrapper" style="display:none;">Tracking Group ID 2
+          <label id="tracking-name-2-wrapper" style="display:none;">Lane Group ID 2
             <input id="tracking-name-2" type="text" placeholder="e.g., B">
           </label>
         </div>
@@ -317,18 +333,94 @@
       "4P/4L-EU": { pc: 1, lidar: 1, projectors: 1 }
     };
 
+    function isDualTrackingType(type) {
+      return type === "6P/4L" || type === "6P/4L-EU";
+    }
+
+    function parseLaneGroupIds(groupName, fallbackBase = 'A') {
+      const ids = String(groupName || '')
+        .split(',')
+        .map(id => id.trim())
+        .filter(id => id);
+      if (ids.length >= 2) return ids.slice(0, 2);
+      const base = ids[0] || fallbackBase;
+      return [`${base}1`, `${base}2`];
+    }
+
+    function getLaneGroups(group, index = 0) {
+      const fallbackBase = `${group.type || 'LaneGroup'}-${index + 1}`;
+      if (Array.isArray(group.laneGroups) && group.laneGroups.length > 0) {
+        return group.laneGroups.map((laneGroup, laneGroupIndex) => ({
+          id: (laneGroup.id || `${fallbackBase}-${laneGroupIndex + 1}`).toString().trim(),
+          laneNumbers: Array.isArray(laneGroup.laneNumbers)
+            ? laneGroup.laneNumbers.map(l => String(l).trim()).filter(Boolean)
+            : []
+        }));
+      }
+
+      const laneNumbers = Array.isArray(group.laneNumbers)
+        ? group.laneNumbers.map(l => String(l).trim()).filter(Boolean)
+        : [];
+
+      if (isDualTrackingType(group.type)) {
+        const ids = parseLaneGroupIds(group.name, fallbackBase);
+        return ids.map((id, laneGroupIndex) => ({
+          id,
+          laneNumbers: laneNumbers.slice(laneGroupIndex * 2, laneGroupIndex * 2 + 2)
+        }));
+      }
+
+      const laneGroupId = String(group.name || fallbackBase).trim() || fallbackBase;
+      return [{ id: laneGroupId, laneNumbers }];
+    }
+
+    function normalizeTrackingGroup(group, index = 0) {
+      const laneGroups = getLaneGroups(group, index);
+      const laneNumbers = laneGroups.flatMap(laneGroup => laneGroup.laneNumbers);
+      const name = laneGroups.length > 1
+        ? laneGroups.map(laneGroup => laneGroup.id).join(',')
+        : (laneGroups[0]?.id || `${group.type}-${index + 1}`);
+      return { ...group, name, laneGroups, laneNumbers };
+    }
+
     function updateLaneInputs() {
       const container = document.getElementById('lane-numbers');
       container.innerHTML = '';
       const type = document.getElementById('lane-type').value;
+      if (!type || !configs[type]) return;
       const lanes = configs[type].lanes;
       const secondTrackingWrapper = document.getElementById('tracking-name-2-wrapper');
-      secondTrackingWrapper.style.display = (type === "6P/4L" || type === "6P/4L-EU") ? 'inline-block' : 'none';
+      const isDualTracking = isDualTrackingType(type);
+      secondTrackingWrapper.style.display = isDualTracking ? 'inline-block' : 'none';
+      if (isDualTracking) {
+        for (let laneGroupIndex = 0; laneGroupIndex < 2; laneGroupIndex++) {
+          const laneGroupBlock = document.createElement('div');
+          laneGroupBlock.className = 'lane-group-block';
+
+          const laneGroupTitle = document.createElement('p');
+          laneGroupTitle.className = 'lane-group-title';
+          laneGroupTitle.textContent = `Lane Group ${laneGroupIndex + 1} Lanes`;
+          laneGroupBlock.appendChild(laneGroupTitle);
+
+          for (let laneIndex = 0; laneIndex < 2; laneIndex++) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = `Lane ${laneIndex + 1} Number`;
+            input.className = 'lane-input';
+            input.dataset.laneGroupIndex = String(laneGroupIndex);
+            laneGroupBlock.appendChild(input);
+          }
+          container.appendChild(laneGroupBlock);
+        }
+        return;
+      }
+
       for (let i = 0; i < lanes; i++) {
         const input = document.createElement('input');
         input.type = 'text';
         input.placeholder = `Lane ${i + 1} Number`;
         input.className = 'lane-input';
+        input.dataset.laneGroupIndex = '0';
         container.appendChild(input);
       }
     }
@@ -338,16 +430,35 @@
       const customName = document.getElementById('tracking-name').value.trim();
       const customName2 = document.getElementById('tracking-name-2').value.trim();
       const laneInputs = document.querySelectorAll('.lane-input');
-      const laneNumbers = Array.from(laneInputs).map(input => input.value.trim()).filter(n => n);
       const support = document.getElementById('support-option').checked;
 
       const pdu = support ? supportPDUs[type] || 0 : 0;
-      const isDualTracking = type === "6P/4L" || type === "6P/4L-EU";
-      const groupName = isDualTracking
-        ? [customName, customName2].filter(Boolean).join(',') || `${type}-${trackingGroups.length + 1}`
-        : customName || `${type}-${trackingGroups.length + 1}`;
+      const isDualTracking = isDualTrackingType(type);
+      const fallbackName = `${type}-${trackingGroups.length + 1}`;
+      const laneGroups = isDualTracking
+        ? [
+            { id: customName || `${fallbackName}A`, laneNumbers: [] },
+            { id: customName2 || `${fallbackName}B`, laneNumbers: [] }
+          ]
+        : [{ id: customName || fallbackName, laneNumbers: [] }];
 
-      trackingGroups.push({ type, name: groupName, laneNumbers, support, pdu });
+      Array.from(laneInputs).forEach(input => {
+        const laneNumber = input.value.trim();
+        if (!laneNumber) return;
+        const laneGroupIndexRaw = input.dataset.laneGroupIndex;
+        if (laneGroupIndexRaw === undefined || laneGroupIndexRaw === '') return;
+        const laneGroupIndex = Number(laneGroupIndexRaw);
+        if (!Number.isInteger(laneGroupIndex) || laneGroupIndex < 0 || laneGroupIndex >= laneGroups.length) return;
+        const laneGroup = laneGroups[laneGroupIndex];
+        laneGroup.laneNumbers.push(laneNumber);
+      });
+
+      const laneNumbers = laneGroups.flatMap(laneGroup => laneGroup.laneNumbers);
+      const groupName = laneGroups.length > 1
+        ? laneGroups.map(laneGroup => laneGroup.id).join(',')
+        : laneGroups[0].id;
+
+      trackingGroups.push({ type, name: groupName, laneGroups, laneNumbers, support, pdu });
       renderTrackingGroups();
       updatePreview();
     }
@@ -362,11 +473,14 @@
       const groupList = document.getElementById('lane-list');
       groupList.innerHTML = '';
       trackingGroups.forEach((group, index) => {
-        const lanes = group.laneNumbers.join(', ');
+        const normalizedGroup = normalizeTrackingGroup(group, index);
+        const laneGroupsText = normalizedGroup.laneGroups
+          .map(laneGroup => `${laneGroup.id} [${laneGroup.laneNumbers.join(', ')}]`)
+          .join(' | ');
         const supportText = group.support ? "with Support" : "no Support";
         const div = document.createElement('div');
         div.className = 'lane-entry';
-        div.innerHTML = `Tracking Group ${index + 1}: <strong>${group.name}</strong> (${group.type}) | Lanes: ${lanes} | ${supportText} <button onclick="removeTrackingGroup(${index})">Remove</button>`;
+        div.innerHTML = `Tracking Group ${index + 1}: <strong>${normalizedGroup.type}</strong> | Lane Group IDs: ${laneGroupsText} | ${supportText} <button onclick="removeTrackingGroup(${index})">Remove</button>`;
         groupList.appendChild(div);
       });
     }
@@ -391,16 +505,6 @@
       document.getElementById('ip-preview').textContent = `Preview IP Range: ${ip} - ${lastIP}`;
     }
 
-    function get6P4LTrackingIds(groupName) {
-      const ids = groupName
-        .split(',')
-        .map(id => id.trim())
-        .filter(id => id);
-      if (ids.length >= 2) return ids.slice(0, 2);
-      const base = ids[0] || groupName.trim() || 'A';
-      return [`${base}1`, `${base}2`];
-    }
-
     function getSupportPDUCounts(type) {
       return supportPDUByDevice[type] || { pc: 0, lidar: 0, projectors: 0 };
     }
@@ -417,30 +521,55 @@
       rows.push(["CONFIG VERSION", "3"]);
       rows.push(["UNREAL LICENSE", "replace-me-with-the-license"]);
 
-      trackingGroups.forEach((group) => {
-        const cfg = configs[group.type];
+      trackingGroups.forEach((group, index) => {
+        const normalizedGroup = normalizeTrackingGroup(group, index);
+        const cfg = configs[normalizedGroup.type];
+        const laneGroups = normalizedGroup.laneGroups;
+        const pduCounts = (normalizedGroup.support || normalizedGroup.pdu > 0)
+          ? getSupportPDUCounts(normalizedGroup.type)
+          : { pc: 0, lidar: 0, projectors: 0 };
+        const isDualTracking = isDualTrackingType(normalizedGroup.type);
 
+        const projectorsPerPc = Math.floor(cfg.proj / cfg.pc);
+        const projectorRemainder = cfg.proj % cfg.pc;
+        const laneGroupCount = Math.max(1, laneGroups.length);
         for (let i = 0; i < cfg.pc; i++) {
           rows.push(["COMPUTER IP", ip]);
           ip = ipIncrement(ip, 1);
+
+          const laneNumbersForPc = laneGroups[i]?.laneNumbers || [];
+          laneNumbersForPc.forEach(lane => {
+            rows.push(["LANE NUMBER", lane]);
+          });
+
+          const firstLane = laneNumbersForPc[0];
+          const lastLane = laneNumbersForPc[laneNumbersForPc.length - 1];
+          const laneLabelPrefix = (firstLane && lastLane)
+            ? (firstLane === lastLane ? `Lane ${firstLane}` : `Lane ${firstLane}-${lastLane}`)
+            : `Lane Group ${i + 1}`;
+          const projectorCount = projectorsPerPc + (i < projectorRemainder ? 1 : 0);
+          let projectorIndex = 0;
+
+          for (let j = 0; j < projectorCount; j++) {
+            const label = `${laneLabelPrefix} ${String.fromCharCode(65 + projectorIndex)}`;
+            projectorIndex++;
+            rows.push(["PROJECTOR IP", ip]);
+            ip = ipIncrement(ip, 1);
+            rows.push(["PROJECTOR LABEL", label]);
+            rows.push(["PROJECTOR MODEL", "OPTOMA"]);
+          }
+
+          if (isDualTracking) {
+            const pcPduCount = Math.floor(pduCounts.pc / laneGroupCount) + (i < (pduCounts.pc % laneGroupCount) ? 1 : 0);
+            const projectorPduCount = Math.floor(pduCounts.projectors / laneGroupCount) + (i < (pduCounts.projectors % laneGroupCount) ? 1 : 0);
+            ip = ipIncrement(ip, pcPduCount + projectorPduCount);
+          }
         }
 
-        group.laneNumbers.forEach(lane => {
-          rows.push(["LANE NUMBER", lane]);
-        });
-
-        const firstLane = group.laneNumbers[0];
-        const lastLane = group.laneNumbers[group.laneNumbers.length - 1];
-
-        for (let i = 0; i < cfg.proj; i++) {
-          const label = `Lane ${firstLane}-${lastLane} ${String.fromCharCode(65 + i)}`;
-          rows.push(["PROJECTOR IP", ip]);
-          ip = ipIncrement(ip, 1);
-          rows.push(["PROJECTOR LABEL", label]);
-          rows.push(["PROJECTOR MODEL", "OPTOMA"]);
-        }
-
-        ip = ipIncrement(ip, cfg.lidar + cfg.camera + group.pdu);
+        const trailingPduCount = isDualTracking
+          ? pduCounts.lidar
+          : (pduCounts.pc + pduCounts.projectors + pduCounts.lidar);
+        ip = ipIncrement(ip, cfg.lidar + cfg.camera + trailingPduCount);
       });
 
 
@@ -498,48 +627,50 @@
   trackingGroups.forEach((group, index) => {
     const cfg = configs[group.type];
     sheet.addRow([]);
-    const headerRow = sheet.addRow([`Tracking Group ${index + 1}: ${group.name} (${group.type})`]);
+    const normalizedGroup = normalizeTrackingGroup(group, index);
+    const headerName = normalizedGroup.laneGroups.map(laneGroup => laneGroup.id).join('/');
+    const headerRow = sheet.addRow([`Tracking Group ${index + 1}: ${headerName} (${normalizedGroup.type})`]);
     headerRow.eachCell(cell => {
       cell.font = { bold: true };
     });
 
     let rowCount = 0;
 
-    if (group.type === "6P/4L" || group.type === "6P/4L-EU") {
-      const trackingIds = get6P4LTrackingIds(group.name);
-      const pduCounts = (group.support || group.pdu > 0) ? getSupportPDUCounts(group.type) : { pc: 0, lidar: 0, projectors: 0 };
+    if (normalizedGroup.type === "6P/4L" || normalizedGroup.type === "6P/4L-EU") {
+      const laneGroupIds = getLaneGroups(normalizedGroup, index).slice(0, 2).map(laneGroup => laneGroup.id);
+      const pduCounts = (normalizedGroup.support || normalizedGroup.pdu > 0) ? getSupportPDUCounts(normalizedGroup.type) : { pc: 0, lidar: 0, projectors: 0 };
 
-      trackingIds.forEach((trackingId, idIndex) => {
-        const pcLabel = `PC-${trackingId}`;
+      laneGroupIds.forEach((laneGroupId, idIndex) => {
+        const pcLabel = `PC-${laneGroupId}`;
         const pcRow = sheet.addRow({ device: pcLabel, ip });
         if (rowCount++ % 2 === 0) pcRow.eachCell(cell => cell.fill = altFill);
         ip = ipIncrement(ip, 1);
 
         for (let i = 0; i < 3; i++) {
-          const label = `PROJ-${trackingId}${i + 1}`;
+          const label = `PROJ-${laneGroupId}${i + 1}`;
           const row = sheet.addRow({ device: label, ip });
           if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
           ip = ipIncrement(ip, 1);
         }
 
-        const pcPduCount = Math.floor(pduCounts.pc / trackingIds.length) + (idIndex < (pduCounts.pc % trackingIds.length) ? 1 : 0);
+        const pcPduCount = Math.floor(pduCounts.pc / laneGroupIds.length) + (idIndex < (pduCounts.pc % laneGroupIds.length) ? 1 : 0);
         for (let i = 0; i < pcPduCount; i++) {
-          const label = pcPduCount > 1 ? `PDU-PC${i + 1}-${trackingId}` : `PDU-PC-${trackingId}`;
+          const label = pcPduCount > 1 ? `PDU-PC${i + 1}-${laneGroupId}` : `PDU-PC-${laneGroupId}`;
           const row = sheet.addRow({ device: label, ip });
           if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
           ip = ipIncrement(ip, 1);
         }
 
-        const projectorPduCount = Math.floor(pduCounts.projectors / trackingIds.length) + (idIndex < (pduCounts.projectors % trackingIds.length) ? 1 : 0);
+        const projectorPduCount = Math.floor(pduCounts.projectors / laneGroupIds.length) + (idIndex < (pduCounts.projectors % laneGroupIds.length) ? 1 : 0);
         for (let i = 0; i < projectorPduCount; i++) {
-          const label = projectorPduCount > 1 ? `PDU-PROJ${i + 1}-${trackingId}` : `PDU-PROJ-${trackingId}`;
+          const label = projectorPduCount > 1 ? `PDU-PROJ${i + 1}-${laneGroupId}` : `PDU-PROJ-${laneGroupId}`;
           const row = sheet.addRow({ device: label, ip });
           if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
           ip = ipIncrement(ip, 1);
         }
       });
 
-      const sharedTrackingLabel = trackingIds.join('/');
+      const sharedTrackingLabel = laneGroupIds.join('/');
       const lidarRow = sheet.addRow({ device: `LiDAR-${sharedTrackingLabel}`, ip });
       if (rowCount++ % 2 === 0) lidarRow.eachCell(cell => cell.fill = altFill);
       ip = ipIncrement(ip, 1);
@@ -557,44 +688,44 @@
 
     } else {
       // All other configs: lane group = tracking group
-      const pduCounts = (group.support || group.pdu > 0) ? getSupportPDUCounts(group.type) : { pc: 0, lidar: 0, projectors: 0 };
+      const pduCounts = (normalizedGroup.support || normalizedGroup.pdu > 0) ? getSupportPDUCounts(normalizedGroup.type) : { pc: 0, lidar: 0, projectors: 0 };
 
       for (let i = 0; i < cfg.pc; i++) {
-        const label = `PC-${group.name}`;
+        const label = `PC-${headerName}`;
         const row = sheet.addRow({ device: label, ip });
         if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
         ip = ipIncrement(ip, 1);
       }
       for (let i = 0; i < cfg.proj; i++) {
-        const label = `PROJ${i + 1}-${group.name}`;
+        const label = `PROJ${i + 1}-${headerName}`;
         const row = sheet.addRow({ device: label, ip });
         if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
         ip = ipIncrement(ip, 1);
       }
-      const lidarRow = sheet.addRow({ device: `LiDAR-${group.name}`, ip });
+      const lidarRow = sheet.addRow({ device: `LiDAR-${headerName}`, ip });
       if (rowCount++ % 2 === 0) lidarRow.eachCell(cell => cell.fill = altFill);
       ip = ipIncrement(ip, 1);
 
-      const camRow = sheet.addRow({ device: `Camera-${group.name}`, ip });
+      const camRow = sheet.addRow({ device: `Camera-${headerName}`, ip });
       if (rowCount++ % 2 === 0) camRow.eachCell(cell => cell.fill = altFill);
       ip = ipIncrement(ip, 1);
 
       for (let i = 0; i < pduCounts.pc; i++) {
-        const label = pduCounts.pc > 1 ? `PDU-PC${i + 1}-${group.name}` : `PDU-PC-${group.name}`;
+        const label = pduCounts.pc > 1 ? `PDU-PC${i + 1}-${headerName}` : `PDU-PC-${headerName}`;
         const row = sheet.addRow({ device: label, ip });
         if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
         ip = ipIncrement(ip, 1);
       }
 
       for (let i = 0; i < pduCounts.projectors; i++) {
-        const label = pduCounts.projectors > 1 ? `PDU-PROJ${i + 1}-${group.name}` : `PDU-PROJ-${group.name}`;
+        const label = pduCounts.projectors > 1 ? `PDU-PROJ${i + 1}-${headerName}` : `PDU-PROJ-${headerName}`;
         const row = sheet.addRow({ device: label, ip });
         if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
         ip = ipIncrement(ip, 1);
       }
 
       for (let i = 0; i < pduCounts.lidar; i++) {
-        const label = pduCounts.lidar > 1 ? `PDU-LiDAR${i + 1}-${group.name}` : `PDU-LiDAR-${group.name}`;
+        const label = pduCounts.lidar > 1 ? `PDU-LiDAR${i + 1}-${headerName}` : `PDU-LiDAR-${headerName}`;
         const row = sheet.addRow({ device: label, ip });
         if (rowCount++ % 2 === 0) row.eachCell(cell => cell.fill = altFill);
         ip = ipIncrement(ip, 1);
@@ -628,7 +759,10 @@
       const reader = new FileReader();
       reader.onload = e => {
         try {
-          trackingGroups = JSON.parse(e.target.result);
+          const loadedGroups = JSON.parse(e.target.result);
+          trackingGroups = Array.isArray(loadedGroups)
+            ? loadedGroups.map((group, index) => normalizeTrackingGroup(group, index))
+            : [];
           renderTrackingGroups();
           updatePreview();
         } catch (err) {
