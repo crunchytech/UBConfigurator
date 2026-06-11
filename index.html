@@ -337,7 +337,7 @@
       return type === "6P/4L" || type === "6P/4L-EU";
     }
 
-    function parse6P4LLaneGroupIds(groupName, fallbackBase = 'A') {
+    function parseLaneGroupIds(groupName, fallbackBase = 'A') {
       const ids = String(groupName || '')
         .split(',')
         .map(id => id.trim())
@@ -348,7 +348,7 @@
     }
 
     function getLaneGroups(group, index = 0) {
-      const fallbackBase = `${group.type || 'LG'}-${index + 1}`;
+      const fallbackBase = `${group.type || 'LaneGroup'}-${index + 1}`;
       if (Array.isArray(group.laneGroups) && group.laneGroups.length > 0) {
         return group.laneGroups.map((laneGroup, laneGroupIndex) => ({
           id: (laneGroup.id || `${fallbackBase}-${laneGroupIndex + 1}`).toString().trim(),
@@ -363,7 +363,7 @@
         : [];
 
       if (isDualTrackingType(group.type)) {
-        const ids = parse6P4LLaneGroupIds(group.name, fallbackBase);
+        const ids = parseLaneGroupIds(group.name, fallbackBase);
         return ids.map((id, laneGroupIndex) => ({
           id,
           laneNumbers: laneNumbers.slice(laneGroupIndex * 2, laneGroupIndex * 2 + 2)
@@ -445,7 +445,9 @@
       Array.from(laneInputs).forEach(input => {
         const laneNumber = input.value.trim();
         if (!laneNumber) return;
-        const laneGroupIndex = Number(input.dataset.laneGroupIndex);
+        const laneGroupIndexRaw = input.dataset.laneGroupIndex;
+        if (laneGroupIndexRaw === undefined || laneGroupIndexRaw === '') return;
+        const laneGroupIndex = Number(laneGroupIndexRaw);
         if (!Number.isInteger(laneGroupIndex) || laneGroupIndex < 0 || laneGroupIndex >= laneGroups.length) return;
         const laneGroup = laneGroups[laneGroupIndex];
         laneGroup.laneNumbers.push(laneNumber);
@@ -501,10 +503,6 @@
       let lastIP = ip;
       for (let i = 1; i < count; i++) lastIP = ipIncrement(lastIP, 1);
       document.getElementById('ip-preview').textContent = `Preview IP Range: ${ip} - ${lastIP}`;
-    }
-
-    function get6P4LLaneGroupIds(group, index = 0) {
-      return getLaneGroups(group, index).slice(0, 2).map(laneGroup => laneGroup.id);
     }
 
     function getSupportPDUCounts(type) {
@@ -614,7 +612,7 @@
     let rowCount = 0;
 
     if (normalizedGroup.type === "6P/4L" || normalizedGroup.type === "6P/4L-EU") {
-      const laneGroupIds = get6P4LLaneGroupIds(normalizedGroup, index);
+      const laneGroupIds = getLaneGroups(normalizedGroup, index).slice(0, 2).map(laneGroup => laneGroup.id);
       const pduCounts = (normalizedGroup.support || normalizedGroup.pdu > 0) ? getSupportPDUCounts(normalizedGroup.type) : { pc: 0, lidar: 0, projectors: 0 };
 
       laneGroupIds.forEach((laneGroupId, idIndex) => {
