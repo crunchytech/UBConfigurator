@@ -383,6 +383,10 @@
       return { ...group, name, laneGroups, laneNumbers };
     }
 
+    function normalizeLaneGroupId(id) {
+      return String(id || '').trim().toLowerCase();
+    }
+
     function updateLaneInputs() {
       const container = document.getElementById('lane-numbers');
       container.innerHTML = '';
@@ -441,6 +445,27 @@
             { id: customName2 || `${fallbackName}B`, laneNumbers: [] }
           ]
         : [{ id: customName || fallbackName, laneNumbers: [] }];
+
+      const existingLaneGroupIds = new Set();
+      trackingGroups.forEach((group, index) => {
+        getLaneGroups(group, index).forEach(laneGroup => {
+          const normalizedId = normalizeLaneGroupId(laneGroup.id);
+          if (normalizedId) existingLaneGroupIds.add(normalizedId);
+        });
+      });
+      const pendingLaneGroupIds = new Set();
+      for (const laneGroup of laneGroups) {
+        const normalizedId = normalizeLaneGroupId(laneGroup.id);
+        if (pendingLaneGroupIds.has(normalizedId)) {
+          alert(`Lane Group ID "${laneGroup.id}" is duplicated in this tracking group. Please use unique Lane Group IDs.`);
+          return;
+        }
+        if (existingLaneGroupIds.has(normalizedId)) {
+          alert(`Lane Group ID "${laneGroup.id}" is already used in another tracking group. Please use a unique Lane Group ID.`);
+          return;
+        }
+        pendingLaneGroupIds.add(normalizedId);
+      }
 
       Array.from(laneInputs).forEach(input => {
         const laneNumber = input.value.trim();
