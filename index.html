@@ -446,16 +446,22 @@
           ]
         : [{ id: customName || fallbackName, laneNumbers: [] }];
 
-      const existingLaneGroupIds = new Set(
-        trackingGroups
-          .flatMap((group, index) => getLaneGroups(group, index).flatMap(laneGroup => normalizeLaneGroupId(laneGroup.id)))
-          .filter(Boolean)
-      );
+      const existingLaneGroupIds = new Set();
+      trackingGroups.forEach((group, index) => {
+        getLaneGroups(group, index).forEach(laneGroup => {
+          const normalizedId = normalizeLaneGroupId(laneGroup.id);
+          if (normalizedId) existingLaneGroupIds.add(normalizedId);
+        });
+      });
       const pendingLaneGroupIds = new Set();
       for (const laneGroup of laneGroups) {
         const normalizedId = normalizeLaneGroupId(laneGroup.id);
-        if (pendingLaneGroupIds.has(normalizedId) || existingLaneGroupIds.has(normalizedId)) {
-          alert(`Lane Group ID "${laneGroup.id}" is already used. Please use a unique Lane Group ID.`);
+        if (pendingLaneGroupIds.has(normalizedId)) {
+          alert(`Lane Group ID "${laneGroup.id}" is duplicated in this tracking group. Please use unique Lane Group IDs.`);
+          return;
+        }
+        if (existingLaneGroupIds.has(normalizedId)) {
+          alert(`Lane Group ID "${laneGroup.id}" is already used in another tracking group. Please use a unique Lane Group ID.`);
           return;
         }
         pendingLaneGroupIds.add(normalizedId);
