@@ -448,7 +448,7 @@
 
       const existingLaneGroupIds = new Set(
         trackingGroups
-          .flatMap((group, index) => getLaneGroups(group, index).map(laneGroup => normalizeLaneGroupId(laneGroup.id)))
+          .flatMap((group, index) => getLaneGroups(group, index).flatMap(laneGroup => normalizeLaneGroupId(laneGroup.id)))
           .filter(Boolean)
       );
       const pendingLaneGroupIds = new Set();
