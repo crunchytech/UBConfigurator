@@ -763,8 +763,18 @@
   serverRow.eachCell(cell => cell.font = { bold: true });
   ip = ipIncrement(ip, 1);
 
-  const serverPDU = sheet.addRow({ device: "Server PDU", ip });
-  serverPDU.eachCell(cell => cell.fill = altFill);
+  const hasSupportEnabledLaneGroups = trackingGroups.some((group, index) => {
+    const normalizedGroup = normalizeTrackingGroup(group, index);
+    const laneGroupSupportEnabled = normalizedGroup.laneGroups.some(laneGroup =>
+      laneGroup.support === true || laneGroup.supportEnabled === true
+    );
+    return normalizedGroup.support || normalizedGroup.pdu > 0 || laneGroupSupportEnabled;
+  });
+
+  if (hasSupportEnabledLaneGroups) {
+    const serverPDU = sheet.addRow({ device: "Server PDU", ip });
+    serverPDU.eachCell(cell => cell.fill = altFill);
+  }
 
   workbook.xlsx.writeBuffer().then(buffer => {
     saveAs(new Blob([buffer]), 'LaneGroups-IPSheet.xlsx');
