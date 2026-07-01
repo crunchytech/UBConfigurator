@@ -766,14 +766,16 @@
   const hasSupportEnabledLaneGroups = trackingGroups.some((group, index) => {
     const normalizedGroup = normalizeTrackingGroup(group, index);
     const laneGroupSupportEnabled = normalizedGroup.laneGroups.some(laneGroup =>
-      laneGroup.support === true || laneGroup.supportEnabled === true
+      laneGroup.support || laneGroup.supportEnabled
     );
-    return normalizedGroup.support || normalizedGroup.pdu > 0 || laneGroupSupportEnabled;
+    const pduCountGreaterThanZero = Number(normalizedGroup.pdu) > 0;
+    return normalizedGroup.support || pduCountGreaterThanZero || laneGroupSupportEnabled;
   });
 
   if (hasSupportEnabledLaneGroups) {
     const serverPDU = sheet.addRow({ device: "Server PDU", ip });
     serverPDU.eachCell(cell => cell.fill = altFill);
+    ip = ipIncrement(ip, 1);
   }
 
   workbook.xlsx.writeBuffer().then(buffer => {
