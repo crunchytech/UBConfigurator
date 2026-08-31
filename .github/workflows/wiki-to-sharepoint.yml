@@ -1,0 +1,23 @@
+name: Sync Wiki to SharePoint
+
+on:
+  push:
+    branches:
+      - main # or main, though wikis might need a repository dispatch or a specific trigger if tracking wiki updates directly
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Wiki Repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}.wiki
+
+      - name: Publish to SharePoint
+        uses: obrassard/action-sharepoint-publish@v1.1.1
+        with:
+          site_url: 'https://crunchy.sharepoint.com/sites/software'
+          library_folder: 'Shared Documents/UnrealBowling/Software Configuration/Install Guides  (In-Office)'
+          sharepoint_client_id: ${{ secrets.CLIENTID }}
+          sharepoint_client_secret: ${{ secrets.CLIENTSECRET }}
